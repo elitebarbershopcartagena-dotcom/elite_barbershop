@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLADE — Panel Administrativo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<!-- SheetJS para exportar Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:#07070b; --dark:#0d0d12; --surface:#111118; --card:#161620;
+  --border:#1e1e2a; --border2:#262635;
+  --gold:#c9a84c; --gold-l:#e8c96a; --gold-d:#8a6e2f; --gold-bg:rgba(201,168,76,.07);
+  --white:#f0ece4; --muted:#6b6560; --muted2:#3a3a48;
+  --green:#10b981; --green-bg:rgba(16,185,129,.1); --green-b:rgba(16,185,129,.25);
+  --red:#ef4444; --red-bg:rgba(239,68,68,.1); --red-b:rgba(239,68,68,.25);
+  --blue:#3b82f6; --blue-bg:rgba(59,130,246,.1);
+  --purple:#a855f7; --purple-bg:rgba(168,85,247,.1);
+  --orange:#f97316; --orange-bg:rgba(249,115,22,.1);
+  --sidebar:240px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:400;min-height:100vh;cursor:none;font-size:14px;}
+
+/* CURSOR */
+.cur{width:7px;height:7px;background:var(--gold);border-radius:50%;position:fixed;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform .1s;}
+.cur-ring{width:28px;height:28px;border:1px solid rgba(201,168,76,.35);border-radius:50%;position:fixed;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:width .25s,height .25s,border-color .25s;}
+
+/* ===== LOGIN ===== */
+#loginWrap{position:fixed;inset:0;z-index:900;background:var(--bg);display:flex;align-items:center;justify-content:center;}
+#loginWrap::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 60% at 50% 40%,rgba(201,168,76,.05) 0%,transparent 70%);}
+.login-card{position:relative;background:var(--surface);border:1px solid var(--border);padding:52px 44px;width:100%;max-width:400px;}
+.login-brand{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:8px;color:var(--gold);text-align:center;}
+.login-tag{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:44px;}
+.lf{margin-bottom:16px;}
+.lf label{display:block;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.lf input{width:100%;background:var(--card);border:1px solid var(--border2);color:var(--white);padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .3s;cursor:none;}
+.lf input:focus{border-color:var(--gold-d);}
+.btn-login{width:100%;background:var(--gold);color:var(--bg);border:none;padding:15px;font-size:10px;letter-spacing:3px;text-transform:uppercase;font-weight:600;cursor:none;transition:background .3s;margin-top:8px;font-family:'DM Sans',sans-serif;}
+.btn-login:hover{background:var(--gold-l);}
+.login-err{font-size:11px;color:var(--red);text-align:center;min-height:18px;margin-top:12px;}
+.login-hint{font-size:11px;color:var(--muted2);text-align:center;margin-top:20px;line-height:1.8;}
+
+/* ===== LAYOUT ===== */
+#app{display:none;min-height:100vh;}
+.sidebar{width:var(--sidebar);background:var(--dark);border-right:1px solid var(--border);position:fixed;top:0;left:0;bottom:0;display:flex;flex-direction:column;z-index:50;overflow:hidden;}
+.sb-logo{padding:28px 24px 22px;border-bottom:1px solid var(--border);}
+.sb-logo-text{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:6px;color:var(--gold);}
+.sb-logo-sub{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted2);margin-top:2px;}
+.sb-user{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.sb-avatar{width:38px;height:38px;background:var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:16px;color:var(--gold);flex-shrink:0;overflow:hidden;border-radius:0;}
+.sb-avatar img{width:100%;height:100%;object-fit:cover;}
+.sb-uname{font-size:13px;font-weight:500;line-height:1.3;}
+.sb-urole{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;}
+.sb-nav{flex:1;padding:20px 0;overflow-y:auto;}
+.sb-section{font-size:8px;letter-spacing:4px;text-transform:uppercase;color:var(--muted2);padding:0 24px 10px;margin-top:4px;}
+.nav-it{display:flex;align-items:center;gap:12px;padding:11px 24px;font-size:12px;color:var(--muted);cursor:none;transition:all .2s;border-left:2px solid transparent;user-select:none;}
+.nav-it:hover{color:var(--white);background:rgba(255,255,255,.02);}
+.nav-it.active{color:var(--gold);background:var(--gold-bg);border-left-color:var(--gold);}
+.nav-it .ni{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+.sb-foot{padding:16px 24px;border-top:1px solid var(--border);}
+.btn-logout{width:100%;background:transparent;border:1px solid var(--border2);color:var(--muted);padding:9px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:none;transition:all .3s;font-family:'DM Sans',sans-serif;}
+.btn-logout:hover{border-color:var(--red);color:var(--red);}
+.main{margin-left:var(--sidebar);flex:1;padding:36px 40px;min-height:100vh;}
+
+/* ===== PANELS ===== */
+.panel{display:none;animation:panelIn .3s ease;}
+.panel.active{display:block;}
+@keyframes panelIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.ph{margin-bottom:36px;padding-bottom:28px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-end;}
+.ph-left{}
+.pt-tag{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:6px;}
+.pt{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:2px;line-height:1;}
+.pt-sub{font-size:12px;color:var(--muted);margin-top:6px;}
+.ph-actions{display:flex;gap:10px;align-items:center;}
+
+/* ===== KPI ===== */
+.kpi-row{display:grid;gap:1px;background:var(--border);margin-bottom:28px;}
+.kpi-row.cols2{grid-template-columns:repeat(2,1fr);}
+.kpi-row.cols3{grid-template-columns:repeat(3,1fr);}
+.kpi-row.cols4{grid-template-columns:repeat(4,1fr);}
+.kpi{background:var(--card);padding:24px 24px 20px;position:relative;overflow:hidden;transition:background .3s;}
+.kpi:hover{background:var(--surface);}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:var(--gold);transform:scaleX(0);transform-origin:left;transition:transform .4s;}
+.kpi:hover::after{transform:scaleX(1);}
+.kpi-l{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.kpi-v{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--gold);line-height:1;}
+.kpi-v.green{color:var(--green);}
+.kpi-v.red{color:var(--red);}
+.kpi-v.white{color:var(--white);}
+.kpi-s{font-size:11px;color:var(--muted);margin-top:5px;}
+
+/* ===== CARDS ===== */
+.card{background:var(--card);border:1px solid var(--border);}
+.card-head{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--border);}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;}
+.card-actions{display:flex;gap:8px;align-items:center;}
+
+/* ===== FILTER BAR ===== */
+.fbar{display:flex;gap:10px;align-items:center;padding:16px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.fi{flex:1;min-width:160px;background:var(--surface);border:1px solid var(--border2);color:var(--white);padding:9px 14px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;transition:border-color .3s;cursor:none;}
+.fi::placeholder{color:var(--muted2);}
+.fi:focus{border-color:var(--gold-d);}
+select.fi{cursor:none;}
+.fb{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:9px 14px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:none;transition:all .25s;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.fb.active,.fb:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-bg);}
+
+/* ===== TABLE ===== */
+.tbl-wrap{overflow-x:auto;}
+.tbl{width:100%;border-collapse:collapse;min-width:600px;}
+.tbl th{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);padding:12px 16px;text-align:left;font-weight:400;border-bottom:1px solid var(--border);white-space:nowrap;}
+.tbl td{padding:13px 16px;font-size:12px;border-bottom:1px solid rgba(30,30,42,.8);}
+.tbl tbody tr{transition:background .15s;cursor:default;}
+.tbl tbody tr:hover{background:rgba(201,168,76,.02);}
+.tbl tbody tr:last-child td{border-bottom:none;}
+.tbl-empty{text-align:center;color:var(--muted);padding:48px!important;font-size:13px;}
+.tbl-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);}
+
+/* ===== BADGES ===== */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:500;white-space:nowrap;}
+.b-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-b);}
+.b-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-b);}
+.b-gold{background:var(--gold-bg);color:var(--gold);border:1px solid rgba(201,168,76,.25);}
+.b-blue{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(59,130,246,.25);}
+.b-purple{background:var(--purple-bg);color:var(--purple);border:1px solid rgba(168,85,247,.25);}
+.b-orange{background:var(--orange-bg);color:var(--orange);border:1px solid rgba(249,115,22,.25);}
+.b-gray{background:rgba(107,101,96,.12);color:var(--muted);border:1px solid rgba(107,101,96,.2);}
+.bdot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+/* ===== BUTTONS ===== */
+.btn{border:none;cursor:none;font-family:'DM Sans',sans-serif;transition:all .25s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn-primary{background:var(--gold);color:var(--bg);padding:10px 20px;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
+.btn-primary:hover{background:var(--gold-l);}
+.btn-secondary{background:transparent;border:1px solid var(--border2);color:var(--muted);padding:9px 18px;font-size:9px;letter-spacing:2px;text-transform:uppercase;}
+.btn-secondary:hover{border-color:var(--gold-d);color:var(--gold);}
+.btn-xs{padding:5px 11px;font-size:9px;letter-spacing:1px;text-transform:uppercase;}
+.btn-xs.success{background:transparent;border:1px solid var(--border2);color:var(--muted);}
+.btn-xs.success:hover{border-color:var(--green);color:var(--green);}
+.btn-xs.danger{background:transparent;border:1px solid var(--border2);color:var(--muted);}
+.btn-xs.danger:hover{border-color:var(--red);color:var(--red);}
+.btn-xs.edit{background:transparent;border:1px solid var(--border2);color:var(--muted);}
+.btn-xs.edit:hover{border-color:var(--gold-d);color:var(--gold);}
+
+/* ===== FORM ===== */
+.form-grid{display:grid;gap:14px;}
+.form-grid.c2{grid-template-columns:1fr 1fr;}
+.form-grid.c3{grid-template-columns:1fr 1fr 1fr;}
+.fg label{display:block;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--surface);border:1px solid var(--border2);color:var(--white);padding:11px 14px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;transition:border-color .3s;cursor:none;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold-d);}
+.fg select option{background:var(--surface);}
+.fg textarea{resize:vertical;min-height:80px;}
+.fg input[readonly]{color:var(--muted);cursor:default;}
+
+/* ===== INLINE FORM (registro corte) ===== */
+.cut-form-wrap{padding:20px 24px;border-bottom:1px solid var(--border);background:var(--surface);}
+.cut-form{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.cut-form .fg{flex:1;min-width:120px;}
+.split-box{padding:14px 24px;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2);display:none;}
+.split-box .form-grid{max-width:500px;}
+
+/* ===== TOTALS ROW ===== */
+.totals-row{display:flex;gap:0;background:var(--surface);border-top:1px solid var(--border);}
+.tot-item{flex:1;padding:16px 20px;border-right:1px solid var(--border);}
+.tot-item:last-child{border-right:none;}
+.tot-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+.tot-value{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;}
+
+/* ===== MODAL ===== */
+.modal-bg{position:fixed;inset:0;background:rgba(7,7,11,.94);z-index:400;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+.modal-bg.open{opacity:1;pointer-events:all;}
+.modal-box{background:var(--surface);border:1px solid var(--border);padding:36px;width:100%;max-width:540px;transform:translateY(16px);transition:transform .3s;max-height:90vh;overflow-y:auto;}
+.modal-bg.open .modal-box{transform:translateY(0);}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;margin-bottom:24px;}
+.modal-actions{display:flex;gap:10px;margin-top:24px;}
+
+/* ===== BARBER CARDS ===== */
+.bc-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:28px;}
+.bc{background:var(--card);border:1px solid var(--border);overflow:hidden;transition:border-color .3s;}
+.bc:hover{border-color:var(--border2);}
+.bc-top{padding:20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);}
+.bc-av{width:52px;height:52px;flex-shrink:0;overflow:hidden;background:var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);}
+.bc-av img{width:100%;height:100%;object-fit:cover;}
+.bc-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+.bc-role{font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.bc-body{padding:18px 20px;display:flex;flex-direction:column;gap:12px;}
+.bc-stat{display:flex;justify-content:space-between;align-items:center;}
+.bc-stat-l{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.toggle-grp{display:flex;gap:6px;}
+.tgl{padding:5px 12px;font-size:8px;letter-spacing:2px;text-transform:uppercase;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:none;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.tgl.on-green{background:var(--green-bg);border-color:var(--green-b);color:var(--green);}
+.tgl.on-red{background:var(--red-bg);border-color:var(--red-b);color:var(--red);}
+.upload-btn{width:100%;background:transparent;border:1px dashed var(--border2);color:var(--muted2);padding:9px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:none;font-family:'DM Sans',sans-serif;transition:all .3s;text-align:center;}
+.upload-btn:hover{border-color:var(--gold-d);color:var(--gold);}
+input[type=file]{display:none;}
+
+/* ===== NOTIF ===== */
+.notif{position:fixed;bottom:28px;left:28px;background:var(--surface);border-left:3px solid var(--gold);padding:16px 22px;z-index:700;transform:translateX(-300%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);min-width:260px;max-width:340px;}
+.notif.show{transform:translateX(0);}
+.notif-t{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:3px;}
+.notif-m{font-size:12px;color:var(--muted);line-height:1.5;}
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.tab{padding:10px 20px;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);cursor:none;transition:all .2s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+.tab.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab:hover:not(.active){color:var(--white);}
+
+/* ===== MISC ===== */
+.text-gold{color:var(--gold);}
+.text-green{color:var(--green);}
+.text-red{color:var(--red);}
+.text-muted{color:var(--muted);}
+.text-big{font-family:'Bebas Neue',sans-serif;font-size:22px;}
+.divider{height:1px;background:var(--border);margin:24px 0;}
+.tag-anon{font-size:10px;color:var(--muted);font-style:italic;}
+</style>
+</head>
+<body>
+<div class="cur" id="cur"></div>
+<div class="cur-ring" id="curRing"></div>
+
+<!-- =========== LOGIN =========== -->
+<div id="loginWrap">
+  <div class="login-card">
+    <div class="login-brand">BLADE</div>
+    <div class="login-tag">Panel Administrativo</div>
+    <div class="lf"><label>Usuario</label><input id="lu" type="text" placeholder="Ingresa tu usuario" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="lf"><label>Contraseña</label><input id="lp" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn-login" onclick="doLogin()">Ingresar al Panel</button>
+    <div class="login-err" id="lerr"></div>
+    <div class="login-hint">Cuentas demo: admin / blade2024<br>juan / barber1 &nbsp;·&nbsp; carlos / barber2 &nbsp;·&nbsp; andres / barber3</div>
+  </div>
+</div>
+
+<!-- =========== APP =========== -->
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo"><div class="sb-logo-text">BLADE</div><div class="sb-logo-sub">Panel Admin</div></div>
+    <div class="sb-user">
+      <div class="sb-avatar" id="sbAv">—</div>
+      <div><div class="sb-uname" id="sbName">—</div><div class="sb-urole" id="sbRole">—</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Dashboard</div>
+      <div class="nav-it active" onclick="gotoPanel('dashboard',this)"><span class="ni">📊</span> Resumen General</div>
+      <div class="sb-section" style="margin-top:12px;">Mi Cuenta</div>
+      <div class="nav-it" onclick="gotoPanel('cortes',this)"><span class="ni">✂️</span> Registrar Cortes</div>
+      <div class="nav-it" onclick="gotoPanel('miperfil',this)"><span class="ni">👤</span> Mi Perfil</div>
+      <div class="sb-section admin-only" style="margin-top:12px;">Administración</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('reportes',this)"><span class="ni">📈</span> Reportes</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('equipo',this)"><span class="ni">👥</span> Equipo</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('inventario',this)"><span class="ni">📦</span> Inventario</div>
+      <div class="sb-section" style="margin-top:12px;">Acceso</div>
+      <div class="nav-it" onclick="window.open('barberia.html','_blank')"><span class="ni">🌐</span> Ver Página Pública</div>
+    </nav>
+    <div class="sb-foot"><button class="btn-logout" onclick="logout()">↩ Cerrar Sesión</button></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Vista General</div>
+          <div class="pt">DASHBOARD</div>
+          <div class="pt-sub" id="dashDate">—</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-secondary" onclick="exportExcelGlobal()">⬇ Exportar Excel</button>
+        </div>
+      </div>
+
+      <!-- KPI HOY -->
+      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">HOY</div>
+      <div class="kpi-row cols4" id="kpiHoyRow" style="margin-bottom:20px;"></div>
+
+      <!-- FILTRO BARBERO -->
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+        <span style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);">Filtrar por barbero:</span>
+        <div id="barberFilterBtns" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+
+      <!-- KPI GENERAL -->
+      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">ACUMULADO TOTAL</div>
+      <div class="kpi-row cols3" id="kpiTotalRow" style="margin-bottom:28px;"></div>
+
+      <!-- TABLA RECIENTE -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">CORTES RECIENTES</div>
+          <div class="card-actions">
+            <select class="fi" style="max-width:180px;" id="dashRecentFilter" onchange="renderDashboard()">
+              <option value="all">Todos los barberos</option>
+            </select>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Barbero</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th><th>Fecha/Hora</th></tr></thead>
+            <tbody id="dashRecentBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CORTES ===== -->
+    <div class="panel" id="panel-cortes">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Registro del día</div>
+          <div class="pt">MIS CORTES</div>
+          <div class="pt-sub" id="cortesUserLabel">—</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-secondary" onclick="exportExcelMyCuts()">⬇ Exportar Mis Cortes</button>
+        </div>
+      </div>
+
+      <!-- KPI MIS CORTES -->
+      <div class="kpi-row cols4" id="myKpiRow" style="margin-bottom:28px;"></div>
+
+      <!-- FORM REGISTRAR -->
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-head"><div class="card-title">REGISTRAR NUEVO SERVICIO</div></div>
+        <div class="cut-form-wrap">
+          <div class="cut-form">
+            <div class="fg" style="min-width:180px;">
+              <label>Cliente</label>
+              <input id="cClient" type="text" placeholder="Nombre o 'Anónimo'">
+            </div>
+            <div class="fg">
+              <label>Servicio</label>
+              <select id="cService" onchange="autoPrice()">
+                <option value="Corte Clásico" data-p="25000">Corte Clásico</option>
+                <option value="Afeitado Ritual" data-p="35000">Afeitado Ritual</option>
+                <option value="Diseño de Barba" data-p="20000">Diseño de Barba</option>
+                <option value="Combo Premium" data-p="70000">Combo Premium</option>
+                <option value="Fade Degradado" data-p="30000">Fade Degradado</option>
+                <option value="Tratamiento Capilar" data-p="28000">Tratamiento Capilar</option>
+                <option value="Otro" data-p="0">Otro (valor manual)</option>
+              </select>
+            </div>
+            <div class="fg" style="max-width:150px;">
+              <label>Valor Total (COP)</label>
+              <input id="cValue" type="number" placeholder="0" min="0">
+            </div>
+            <div class="fg">
+              <label>Forma de Pago</label>
+              <select id="cPayType" onchange="toggleSplit()">
+                <option value="efectivo">💵 Efectivo</option>
+                <option value="transferencia">📲 Transferencia</option>
+                <option value="mixto">🔀 Mixto</option>
+              </select>
+            </div>
+            <div class="fg" style="max-width:60px;">
+              <label>Anón.</label>
+              <input id="cAnon" type="checkbox" style="width:auto;cursor:none;margin-top:10px;accent-color:var(--gold);" title="Cliente anónimo (presencial sin nombre)">
+            </div>
+            <button class="btn btn-primary" onclick="addCut()" style="align-self:flex-end;">+ Registrar</button>
+          </div>
+        </div>
+        <!-- SPLIT MIXTO -->
+        <div class="split-box" id="splitBox">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Desglose Pago Mixto</div>
+          <div class="form-grid c3">
+            <div class="fg"><label>Efectivo (COP)</label><input id="sEf" type="number" placeholder="0" oninput="calcRemainder()"></div>
+            <div class="fg"><label>Transferencia (COP)</label><input id="sTr" type="number" placeholder="0" oninput="calcRemainder()"></div>
+            <div class="fg"><label>Diferencia</label><input id="sRem" type="number" placeholder="—" readonly></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLA MIS CORTES HOY -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">CORTES DE HOY</div>
+          <div class="card-actions">
+            <select class="fi" style="max-width:160px;" id="myCutsDateFilter" onchange="renderMyCuts()">
+              <option value="today">Solo hoy</option>
+              <option value="week">Esta semana</option>
+              <option value="month">Este mes</option>
+              <option value="all">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th><th>Hora</th><th></th></tr></thead>
+            <tbody id="myCutsBody"></tbody>
+          </table>
+        </div>
+        <div class="totals-row" id="myCutsTotals"></div>
+      </div>
+    </div>
+
+    <!-- ===== MI PERFIL ===== -->
+    <div class="panel" id="panel-miperfil">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Configuración</div>
+          <div class="pt">MI PERFIL</div>
+          <div class="pt-sub">Edita tu información pública y configuración de cuenta.</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <!-- Foto y disponibilidad -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">FOTO Y ESTADO</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:center;gap:20px;">
+              <div id="profilePhotoPreview" style="width:96px;height:96px;overflow:hidden;background:var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--gold);flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <input type="file" id="profilePhotoInput" accept="image/*" onchange="uploadMyPhoto(this)">
+                <button class="upload-btn" onclick="document.getElementById('profilePhotoInput').click()">📷 Subir / Cambiar Foto</button>
+                <div style="font-size:11px;color:var(--muted2);margin-top:8px;">La foto se muestra en la página pública.</div>
+              </div>
+            </div>
+            <div class="divider" style="margin:8px 0;"></div>
+            <div>
+              <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Mi Disponibilidad (página pública)</div>
+              <div class="toggle-grp">
+                <button class="tgl" id="myTogAvail" onclick="setMyStatus('disponible')">● Disponible</button>
+                <button class="tgl" id="myTogInact" onclick="setMyStatus('inactivo')">● Inactivo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Datos personales -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">DATOS PÚBLICOS</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:14px;">
+            <div class="fg"><label>Nombre visible</label><input type="text" id="pName" placeholder="Tu nombre completo"></div>
+            <div class="fg"><label>Especialidad / Rol</label><input type="text" id="pRole" placeholder="Ej: Maestro Barbero"></div>
+            <div class="fg"><label>Descripción (aparece en El Equipo)</label><textarea id="pSpec" placeholder="Describe tu experiencia y especialidades..."></textarea></div>
+            <div class="fg"><label>Estrellas (1–5)</label>
+              <select id="pStars"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select>
+            </div>
+            <button class="btn btn-primary" onclick="saveMyProfile()" style="align-self:flex-start;">Guardar Cambios</button>
+          </div>
+        </div>
+        <!-- Cambiar contraseña -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">CAMBIAR CONTRASEÑA</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:14px;">
+            <div class="fg"><label>Contraseña Actual</label><input type="password" id="pwOld" placeholder="••••••••"></div>
+            <div class="fg"><label>Nueva Contraseña</label><input type="password" id="pwNew" placeholder="••••••••"></div>
+            <div class="fg"><label>Confirmar Nueva</label><input type="password" id="pwConf" placeholder="••••••••"></div>
+            <button class="btn btn-primary" onclick="changePassword()" style="align-self:flex-start;">Actualizar Contraseña</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== REPORTES (solo admin) ===== -->
+    <div class="panel" id="panel-reportes">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Administrador</div>
+          <div class="pt">REPORTES</div>
+          <div class="pt-sub">Análisis completo de ingresos y servicios por barbero y período.</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-primary" onclick="exportExcelFull()">⬇ Exportar Excel Completo</button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="card" style="margin-bottom:24px;">
+        <div style="padding:16px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="min-width:150px;"><label>Período</label>
+            <select id="repPeriod" class="fi" onchange="renderReportes()">
+              <option value="today">Hoy</option>
+              <option value="week">Esta semana</option>
+              <option value="month">Este mes</option>
+              <option value="custom">Rango personalizado</option>
+              <option value="all">Todo el histórico</option>
+            </select>
+          </div>
+          <div id="customRange" style="display:none;gap:10px;display:none;">
+            <div class="fg"><label>Desde</label><input type="date" id="repFrom" class="fi" onchange="renderReportes()"></div>
+            <div class="fg"><label>Hasta</label><input type="date" id="repTo" class="fi" onchange="renderReportes()"></div>
+          </div>
+          <div class="fg" style="min-width:160px;"><label>Barbero</label>
+            <select id="repBarber" class="fi" onchange="renderReportes()">
+              <option value="all">Todos los barberos</option>
+            </select>
+          </div>
+          <div class="fg" style="min-width:160px;"><label>Pago</label>
+            <select id="repPay" class="fi" onchange="renderReportes()">
+              <option value="all">Todas las formas</option>
+              <option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option>
+              <option value="mixto">Mixto</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpi-row cols4" id="repKpiRow" style="margin-bottom:24px;"></div>
+
+      <!-- Desglose por barbero -->
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-head"><div class="card-title">DESGLOSE POR BARBERO</div></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Barbero</th><th>Cortes</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>% del total</th></tr></thead>
+            <tbody id="repBarberBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabla detallada -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">REGISTRO DETALLADO</div>
+          <div style="font-size:11px;color:var(--muted);" id="repCount">0 registros</div>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Fecha</th><th>Hora</th><th>Barbero</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th></tr></thead>
+            <tbody id="repTableBody"></tbody>
+          </table>
+        </div>
+        <div class="tbl-foot"><span id="repTotLabel" class="text-muted">—</span></div>
+      </div>
+    </div>
+
+    <!-- ===== EQUIPO (solo admin) ===== -->
+    <div class="panel" id="panel-equipo">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Administración</div>
+          <div class="pt">EQUIPO</div>
+          <div class="pt-sub">Gestiona el equipo de barberos. Los cambios se reflejan en la página pública.</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-primary" onclick="openBarberModal()">+ Agregar Barbero</button>
+        </div>
+      </div>
+      <div class="bc-grid" id="barberCards"></div>
+    </div>
+
+    <!-- ===== INVENTARIO (solo admin) ===== -->
+    <div class="panel" id="panel-inventario">
+      <div class="ph">
+        <div class="ph-left">
+          <div class="pt-tag">Administración</div>
+          <div class="pt">INVENTARIO</div>
+          <div class="pt-sub">Control de stock y productos de la barbería.</div>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-secondary" onclick="exportExcelInv()">⬇ Exportar</button>
+          <button class="btn btn-primary" onclick="openInvModal()">+ Agregar Producto</button>
+        </div>
+      </div>
+      <div class="kpi-row cols4" id="invKpiRow" style="margin-bottom:24px;"></div>
+      <div class="card">
+        <div class="fbar">
+          <input class="fi" type="text" placeholder="Buscar producto..." oninput="renderInv()">
+          <button class="fb active" onclick="setInvF('all',this)">Todos</button>
+          <button class="fb" onclick="setInvF('ok',this)">OK</button>
+          <button class="fb" onclick="setInvF('low',this)">Bajo</button>
+          <button class="fb" onclick="setInvF('out',this)">Agotado</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Producto</th><th>Categoría</th><th>Cantidad</th><th>Precio Unit.</th><th>Valor Total</th><th>Estado</th><th>Acciones</th></tr></thead>
+            <tbody id="invBody"></tbody>
+          </table>
+        </div>
+        <div class="tbl-foot">
+          <span class="text-muted" id="invFootLabel">—</span>
+          <span class="text-gold text-big" id="invFootValue">$0</span>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODALES -->
+<div class="modal-bg" id="invModal" onclick="if(event.target===this)closeInvModal()">
+  <div class="modal-box">
+    <div class="modal-title" id="invMT">NUEVO PRODUCTO</div>
+    <div class="form-grid c2">
+      <div class="fg"><label>Nombre</label><input id="iName" type="text" placeholder="Ej: Cera Gold"></div>
+      <div class="fg"><label>Categoría</label>
+        <select id="iCat"><option>Fijadores</option><option>Cuidado Barba</option><option>Herramientas</option><option>Higiene</option><option>Aceites</option><option>Otro</option></select>
+      </div>
+      <div class="fg"><label>Cantidad</label><input id="iQty" type="number" placeholder="0" min="0"></div>
+      <div class="fg"><label>Precio Unitario (COP)</label><input id="iPrice" type="number" placeholder="0" min="0"></div>
+      <div class="fg"><label>Stock Mínimo</label><input id="iMin" type="number" placeholder="5" min="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeInvModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInvItem()" style="flex:2;">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="barberModal" onclick="if(event.target===this)closeBarberModal()">
+  <div class="modal-box">
+    <div class="modal-title" id="bMT">NUEVO BARBERO</div>
+    <div class="form-grid c2">
+      <div class="fg"><label>Nombre</label><input id="bName" type="text" placeholder="Nombre completo"></div>
+      <div class="fg"><label>Usuario de acceso</label><input id="bUser" type="text" placeholder="ej: pedro"></div>
+      <div class="fg"><label>Contraseña</label><input id="bPass" type="password" placeholder="••••••••"></div>
+      <div class="fg"><label>Rol / Especialidad</label><input id="bRole" type="text" placeholder="Ej: Barbero Junior"></div>
+    </div>
+    <div class="fg" style="margin-top:14px;"><label>Descripción</label><textarea id="bSpec" placeholder="Descripción para la página pública..."></textarea></div>
+    <div class="form-grid c2" style="margin-top:14px;">
+      <div class="fg"><label>Estrellas (1–5)</label><select id="bStars"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+      <div class="fg"><label>Estado inicial</label><select id="bStatus"><option value="disponible">Disponible</option><option value="inactivo">Inactivo</option></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeBarberModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewBarber()" style="flex:2;">Crear Barbero</button>
+    </div>
+  </div>
+</div>
+
+<div class="notif" id="notif">
+  <div class="notif-t" id="notifT">—</div>
+  <div class="notif-m" id="notifM">—</div>
+</div>
+
+<script>
+// ============================================================
+// STORAGE ENGINE — soporta grandes volúmenes con compresión JSON
+// ============================================================
+const DB = {
+  get(k,def=null){try{const d=localStorage.getItem('blade_'+k);return d?JSON.parse(d):def;}catch{return def;}},
+  set(k,v){try{localStorage.setItem('blade_'+k,JSON.stringify(v));}catch(e){console.warn('Storage full:',e);}},
+  del(k){localStorage.removeItem('blade_'+k);}
+};
+
+// ============================================================
+// CUENTAS — dinámicas (admin puede crear nuevas)
+// ============================================================
+const BUILT_IN = {
+  admin:  {pass:'blade2024',name:'Administrador',role:'Administrador',isAdmin:true,barberId:null},
+  juan:   {pass:'barber1',  name:'Juan Martínez',role:'Maestro Barbero',isAdmin:false,barberId:1},
+  carlos: {pass:'barber2',  name:'Carlos Ríos',  role:'Barbero Senior', isAdmin:false,barberId:2},
+  andres: {pass:'barber3',  name:'Andrés Flórez',role:'Estilista Barbero',isAdmin:false,barberId:3},
+};
+function getAccounts(){return Object.assign({},BUILT_IN,DB.get('accounts',{}));}
+
+// ============================================================
+// DEFAULT DATA
+// ============================================================
+const DEF_BARBERS=[
+  {id:1,name:'Juan Martínez',role:'Maestro Barbero',spec:'Especialista en fade técnico y diseños a navaja. 8 años de experiencia en barbería clásica y moderna.',stars:5,status:'disponible',photo:''},
+  {id:2,name:'Carlos Ríos',role:'Barbero Senior',spec:'Experto en afeitado ritual y cuidado de barba. Formado en técnicas italianas y americanas.',stars:5,status:'disponible',photo:''},
+  {id:3,name:'Andrés Flórez',role:'Estilista Barbero',spec:'Experto en cortes modernos y tendencias internacionales. Especialista en tratamientos capilares.',stars:4,status:'inactivo',photo:''},
+];
+const DEF_INV=[
+  {id:1,name:'Cera Americana Gold',cat:'Fijadores',qty:24,price:28000,min:5},
+  {id:2,name:'Aceite de Barba Premium',cat:'Cuidado Barba',qty:3,price:45000,min:5},
+  {id:3,name:'Máquina Wahl Senior',cat:'Herramientas',qty:0,price:380000,min:2},
+  {id:4,name:'Shampoo Anticaspa Pro',cat:'Higiene',qty:18,price:22000,min:5},
+  {id:5,name:'Bálsamo After Shave',cat:'Cuidado Barba',qty:2,price:35000,min:4},
+  {id:6,name:'Navaja Gillette Pro',cat:'Herramientas',qty:45,price:8500,min:10},
+  {id:7,name:'Gel Fijador Negro',cat:'Fijadores',qty:12,price:18000,min:5},
+  {id:8,name:'Tijeras Kamisori 7"',cat:'Herramientas',qty:4,price:250000,min:2},
+];
+const getBarbers=()=>DB.get('barbers',DEF_BARBERS);
+const saveBarbers=b=>{DB.set('barbers',b);localStorage.setItem('blade_barbers',JSON.stringify(b));};
+const getInv=()=>DB.get('inv',DEF_INV);
+const saveInv=i=>DB.set('inv',i);
+const getCuts=()=>DB.get('cuts',[]);
+const saveCuts=c=>DB.set('cuts',c);
+
+// ============================================================
+// ESTADO ACTUAL
+// ============================================================
+let CU=null; // currentUser
+
+// ============================================================
+// LOGIN
+// ============================================================
+function doLogin(){
+  const u=document.getElementById('lu').value.trim().toLowerCase();
+  const p=document.getElementById('lp').value;
+  const acc=getAccounts()[u];
+  if(!acc||acc.pass!==p){
+    document.getElementById('lerr').textContent='Usuario o contraseña incorrectos.';
+    setTimeout(()=>document.getElementById('lerr').textContent='',3000);
+    return;
+  }
+  CU={username:u,...acc};
+  document.getElementById('loginWrap').style.display='none';
+  document.getElementById('app').style.display='flex';
+  // Sidebar user
+  const b=getBarbers().find(x=>x.id===CU.barberId);
+  document.getElementById('sbName').textContent=CU.name;
+  document.getElementById('sbRole').textContent=CU.role;
+  const avEl=document.getElementById('sbAv');
+  if(b&&b.photo){avEl.innerHTML=`<img src="${b.photo}">`;}
+  else{avEl.textContent=CU.name.split(' ').map(n=>n[0]).join('').substring(0,2);}
+  // Admin-only items
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display=CU.isAdmin?'':'none');
+  initAll();
+}
+function logout(){
+  CU=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('loginWrap').style.display='flex';
+  document.getElementById('lu').value='';document.getElementById('lp').value='';
+}
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function gotoPanel(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-it').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  const renders={dashboard:renderDashboard,cortes:renderCortes,miperfil:renderMyProfile,reportes:renderReportes,equipo:renderEquipo,inventario:renderInv};
+  if(renders[id]) renders[id]();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function initAll(){
+  document.getElementById('dashDate').textContent=new Date().toLocaleDateString('es-CO',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('cortesUserLabel').textContent='Registrando como: '+CU.name;
+  renderDashboard();
+  populateBarberFilters();
+  if(CU.isAdmin){renderReportes();renderEquipo();renderInv();}
+  renderMyProfile();
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function fmt(n){if(!n||n===0)return '$0';if(n>=1000000)return '$'+(n/1000000).toFixed(1)+'M';if(n>=1000)return '$'+(n/1000).toFixed(0)+'K';return '$'+n.toLocaleString('es-CO');}
+function fmtFull(n){return '$'+(n||0).toLocaleString('es-CO');}
+function dateStr(ts){return new Date(ts).toLocaleDateString('es-CO',{day:'2-digit',month:'short',year:'numeric'});}
+function timeStr(ts){return new Date(ts).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
+function todayStr(){return new Date().toDateString();}
+function isToday(ts){return new Date(ts).toDateString()===todayStr();}
+function isThisWeek(ts){const d=new Date(ts),n=new Date(),s=new Date(n);s.setDate(n.getDate()-n.getDay());return d>=s;}
+function isThisMonth(ts){const d=new Date(ts),n=new Date();return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();}
+function inRange(ts,from,to){const d=new Date(ts);return d>=new Date(from)&&d<=new Date(to+'T23:59:59');}
+function payBadge(c){
+  if(c.payType==='efectivo')return`<span class="badge b-green"><span class="bdot"></span>Efectivo</span>`;
+  if(c.payType==='transferencia')return`<span class="badge b-gold"><span class="bdot"></span>Transferencia</span>`;
+  return`<span class="badge b-purple"><span class="bdot"></span>Mixto</span>`;
+}
+function filterByPeriod(cuts,period,from,to){
+  if(period==='today') return cuts.filter(c=>isToday(c.ts));
+  if(period==='week') return cuts.filter(c=>isThisWeek(c.ts));
+  if(period==='month') return cuts.filter(c=>isThisMonth(c.ts));
+  if(period==='custom'&&from&&to) return cuts.filter(c=>inRange(c.ts,from,to));
+  return cuts;
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+let dashBarberFilter='all';
+function populateBarberFilters(){
+  const barbers=getBarbers();
+  // Barra de filtros rápidos
+  const bfb=document.getElementById('barberFilterBtns');
+  bfb.innerHTML=`<button class="fb active" onclick="setDashFilter('all',this)">Todos</button>`+
+    barbers.map(b=>`<button class="fb" onclick="setDashFilter(${b.id},this)">${b.name.split(' ')[0]}</button>`).join('');
+  // Selects
+  ['dashRecentFilter','repBarber'].forEach(id=>{
+    const sel=document.getElementById(id);
+    if(!sel)return;
+    const cur=sel.value;
+    sel.innerHTML=`<option value="all">Todos los barberos</option>`+barbers.map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+    sel.value=cur;
+  });
+}
+function setDashFilter(v,btn){
+  dashBarberFilter=v;
+  document.querySelectorAll('#barberFilterBtns .fb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDashboard();
+}
+function renderDashboard(){
+  let cuts=getCuts();
+  const todayCuts=cuts.filter(c=>isToday(c.ts));
+  let filtered=dashBarberFilter==='all'?todayCuts:todayCuts.filter(c=>c.barberId==dashBarberFilter);
+  const ef=filtered.reduce((a,b)=>a+(b.ef||0),0);
+  const tr=filtered.reduce((a,b)=>a+(b.tr||0),0);
+  const total=ef+tr;
+  const kpiHoy=document.getElementById('kpiHoyRow');
+  kpiHoy.innerHTML=`
+    <div class="kpi"><div class="kpi-l">Cortes Hoy</div><div class="kpi-v white">${filtered.length}</div><div class="kpi-s">${dashBarberFilter==='all'?'Todos los barberos':'Filtrado'}</div></div>
+    <div class="kpi"><div class="kpi-l">Efectivo Hoy</div><div class="kpi-v green">${fmt(ef)}</div><div class="kpi-s">${fmtFull(ef)}</div></div>
+    <div class="kpi"><div class="kpi-l">Transferencia Hoy</div><div class="kpi-v">${fmt(tr)}</div><div class="kpi-s">${fmtFull(tr)}</div></div>
+    <div class="kpi"><div class="kpi-l">Total Ingresado Hoy</div><div class="kpi-v">${fmt(total)}</div><div class="kpi-s">${fmtFull(total)}</div></div>`;
+  // General acumulado
+  const allF=dashBarberFilter==='all'?cuts:cuts.filter(c=>c.barberId==dashBarberFilter);
+  const allEf=allF.reduce((a,b)=>a+(b.ef||0),0);
+  const allTr=allF.reduce((a,b)=>a+(b.tr||0),0);
+  document.getElementById('kpiTotalRow').innerHTML=`
+    <div class="kpi"><div class="kpi-l">Total Cortes Registrados</div><div class="kpi-v white">${allF.length}</div></div>
+    <div class="kpi"><div class="kpi-l">Total Efectivo Acumulado</div><div class="kpi-v green">${fmt(allEf)}</div><div class="kpi-s">${fmtFull(allEf)}</div></div>
+    <div class="kpi"><div class="kpi-l">Total Transferencia Acumulado</div><div class="kpi-v">${fmt(allTr)}</div><div class="kpi-s">${fmtFull(allTr)}</div></div>`;
+  // Tabla reciente
+  const rf=document.getElementById('dashRecentFilter').value;
+  let recent=rf==='all'?cuts:cuts.filter(c=>c.barberId==rf);
+  recent=[...recent].reverse().slice(0,20);
+  document.getElementById('dashRecentBody').innerHTML=recent.length?
+    recent.map(c=>`<tr>
+      <td>${c.barberName}</td>
+      <td>${c.anon?`<span class="tag-anon">Anónimo</span>`:c.client||'—'}</td>
+      <td>${c.service}</td>
+      <td class="text-green">${fmtFull(c.ef||0)}</td>
+      <td class="text-gold">${fmtFull(c.tr||0)}</td>
+      <td><span class="text-big">${fmtFull((c.ef||0)+(c.tr||0))}</span></td>
+      <td>${payBadge(c)}</td>
+      <td class="text-muted" style="font-size:11px;">${dateStr(c.ts)} ${timeStr(c.ts)}</td>
+    </tr>`).join(''):`<tr><td colspan="8" class="tbl-empty">Sin registros.</td></tr>`;
+}
+
+// ============================================================
+// CORTES
+// ============================================================
+function autoPrice(){
+  const opt=document.getElementById('cService').options[document.getElementById('cService').selectedIndex];
+  const p=parseInt(opt.dataset.p)||0;
+  if(p>0)document.getElementById('cValue').value=p;
+}
+function toggleSplit(){
+  document.getElementById('splitBox').style.display=document.getElementById('cPayType').value==='mixto'?'block':'none';
+}
+function calcRemainder(){
+  const total=parseInt(document.getElementById('cValue').value)||0;
+  const ef=parseInt(document.getElementById('sEf').value)||0;
+  const tr=parseInt(document.getElementById('sTr').value)||0;
+  document.getElementById('sRem').value=total-ef-tr;
+}
+function addCut(){
+  if(!CU)return;
+  const anon=document.getElementById('cAnon').checked;
+  const client=anon?'':document.getElementById('cClient').value.trim();
+  const service=document.getElementById('cService').value;
+  const value=parseInt(document.getElementById('cValue').value)||0;
+  const payType=document.getElementById('cPayType').value;
+  if(!value){showNotif('Error','Ingresa el valor del servicio');return;}
+  let ef=0,tr=0;
+  if(payType==='efectivo')ef=value;
+  else if(payType==='transferencia')tr=value;
+  else{ef=parseInt(document.getElementById('sEf').value)||0;tr=parseInt(document.getElementById('sTr').value)||0;}
+  const cuts=getCuts();
+  const barber=getBarbers().find(b=>b.id===CU.barberId);
+  cuts.push({
+    id:Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    barberId:CU.barberId,
+    barberName:CU.name,
+    client,anon,service,ef,tr,payType,
+    ts:new Date().toISOString()
+  });
+  saveCuts(cuts);
+  // Reset
+  document.getElementById('cClient').value='';
+  document.getElementById('cValue').value='';
+  document.getElementById('cAnon').checked=false;
+  document.getElementById('sEf').value='';
+  document.getElementById('sTr').value='';
+  document.getElementById('splitBox').style.display='none';
+  document.getElementById('cPayType').value='efectivo';
+  renderCortes();
+  showNotif('✓ Corte Registrado',`${service} — ${fmtFull(value)}`);
+}
+function deleteCut(id){
+  if(!confirm('¿Eliminar este registro?'))return;
+  saveCuts(getCuts().filter(c=>c.id!==id));
+  renderCortes();showNotif('Eliminado','Registro eliminado');
+}
+function renderCortes(){
+  if(!CU)return;
+  const period=document.getElementById('myCutsDateFilter').value;
+  let cuts=getCuts();
+  if(!CU.isAdmin)cuts=cuts.filter(c=>c.barberId===CU.barberId);
+  else{const sel=document.getElementById('myCutsDateFilter').value;}
+  cuts=filterByPeriod(cuts,period);
+  const ef=cuts.reduce((a,b)=>a+(b.ef||0),0);
+  const tr=cuts.reduce((a,b)=>a+(b.tr||0),0);
+  const total=ef+tr;
+  document.getElementById('myKpiRow').innerHTML=`
+    <div class="kpi"><div class="kpi-l">Cortes en período</div><div class="kpi-v white">${cuts.length}</div></div>
+    <div class="kpi"><div class="kpi-l">Efectivo</div><div class="kpi-v green">${fmt(ef)}</div><div class="kpi-s">${fmtFull(ef)}</div></div>
+    <div class="kpi"><div class="kpi-l">Transferencia</div><div class="kpi-v">${fmt(tr)}</div><div class="kpi-s">${fmtFull(tr)}</div></div>
+    <div class="kpi"><div class="kpi-l">Total</div><div class="kpi-v">${fmt(total)}</div><div class="kpi-s">${fmtFull(total)}</div></div>`;
+  const rows=[...cuts].reverse();
+  document.getElementById('myCutsBody').innerHTML=rows.length?rows.map((c,i)=>`<tr>
+    <td class="text-muted" style="font-size:11px;">${rows.length-i}</td>
+    <td>${c.anon?`<span class="tag-anon">Anónimo (presencial)</span>`:c.client||'—'}</td>
+    <td>${c.service}</td>
+    <td class="text-green">${fmtFull(c.ef||0)}</td>
+    <td class="text-gold">${fmtFull(c.tr||0)}</td>
+    <td><span class="text-big">${fmtFull((c.ef||0)+(c.tr||0))}</span></td>
+    <td>${payBadge(c)}</td>
+    <td class="text-muted" style="font-size:11px;">${timeStr(c.ts)}<br><span style="font-size:10px;">${dateStr(c.ts)}</span></td>
+    <td><button class="btn btn-xs danger" onclick="deleteCut('${c.id}')">✕</button></td>
+  </tr>`).join(''):`<tr><td colspan="9" class="tbl-empty">Sin cortes registrados en este período.</td></tr>`;
+  document.getElementById('myCutsTotals').innerHTML=`
+    <div class="tot-item"><div class="tot-label">Efectivo</div><div class="tot-value text-green">${fmtFull(ef)}</div></div>
+    <div class="tot-item"><div class="tot-label">Transferencia</div><div class="tot-value text-gold">${fmtFull(tr)}</div></div>
+    <div class="tot-item"><div class="tot-label">Total</div><div class="tot-value">${fmtFull(total)}</div></div>`;
+}
+
+// ============================================================
+// MI PERFIL
+// ============================================================
+function renderMyProfile(){
+  if(!CU)return;
+  const barbers=getBarbers();
+  const b=barbers.find(x=>x.id===CU.barberId);
+  if(!b){
+    // Admin sin barbero asociado
+    document.getElementById('profilePhotoPreview').textContent='AD';
+    return;
+  }
+  const prev=document.getElementById('profilePhotoPreview');
+  prev.innerHTML=b.photo?`<img src="${b.photo}" style="width:100%;height:100%;object-fit:cover;">`:`${CU.name.split(' ').map(n=>n[0]).join('').substring(0,2)}`;
+  document.getElementById('pName').value=b.name;
+  document.getElementById('pRole').value=b.role;
+  document.getElementById('pSpec').value=b.spec;
+  document.getElementById('pStars').value=b.stars;
+  // Status toggles
+  document.getElementById('myTogAvail').className='tgl'+(b.status==='disponible'?' on-green':'');
+  document.getElementById('myTogInact').className='tgl'+(b.status==='inactivo'?' on-red':'');
+}
+function setMyStatus(s){
+  if(!CU||!CU.barberId)return;
+  const barbers=getBarbers();
+  const b=barbers.find(x=>x.id===CU.barberId);
+  if(!b)return;
+  b.status=s;saveBarbers(barbers);renderMyProfile();
+  showNotif('Estado Actualizado',`Ahora estás ${s}`);
+}
+function uploadMyPhoto(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const barbers=getBarbers();const b=barbers.find(x=>x.id===CU.barberId);if(!b)return;
+    b.photo=e.target.result;saveBarbers(barbers);
+    document.getElementById('profilePhotoPreview').innerHTML=`<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+    document.getElementById('sbAv').innerHTML=`<img src="${e.target.result}">`;
+    showNotif('Foto Actualizada','Tu foto se actualizó en la página pública.');
+  };r.readAsDataURL(f);
+}
+function saveMyProfile(){
+  if(!CU||!CU.barberId){showNotif('Info','El administrador no tiene perfil de barbero.');return;}
+  const barbers=getBarbers();const b=barbers.find(x=>x.id===CU.barberId);if(!b)return;
+  b.name=document.getElementById('pName').value.trim()||b.name;
+  b.role=document.getElementById('pRole').value.trim()||b.role;
+  b.spec=document.getElementById('pSpec').value.trim()||b.spec;
+  b.stars=parseInt(document.getElementById('pStars').value)||b.stars;
+  saveBarbers(barbers);
+  showNotif('Perfil Guardado','Tu información pública fue actualizada.');
+}
+function changePassword(){
+  const old=document.getElementById('pwOld').value;
+  const nw=document.getElementById('pwNew').value;
+  const cf=document.getElementById('pwConf').value;
+  const accs=getAccounts();
+  if(accs[CU.username].pass!==old){showNotif('Error','La contraseña actual es incorrecta.');return;}
+  if(!nw||nw.length<4){showNotif('Error','La nueva contraseña debe tener al menos 4 caracteres.');return;}
+  if(nw!==cf){showNotif('Error','Las contraseñas no coinciden.');return;}
+  const custom=DB.get('accounts',{});
+  custom[CU.username]={...accs[CU.username],pass:nw};
+  DB.set('accounts',custom);
+  ['pwOld','pwNew','pwConf'].forEach(id=>document.getElementById(id).value='');
+  showNotif('Contraseña Actualizada','Tu contraseña fue cambiada exitosamente.');
+}
+
+// ============================================================
+// REPORTES
+// ============================================================
+function renderReportes(){
+  const period=document.getElementById('repPeriod').value;
+  const from=document.getElementById('repFrom').value;
+  const to=document.getElementById('repTo').value;
+  const barberF=document.getElementById('repBarber').value;
+  const payF=document.getElementById('repPay').value;
+  document.getElementById('customRange').style.display=period==='custom'?'flex':'none';
+  let cuts=getCuts();
+  cuts=filterByPeriod(cuts,period,from,to);
+  if(barberF!=='all')cuts=cuts.filter(c=>c.barberId==barberF);
+  if(payF!=='all')cuts=cuts.filter(c=>c.payType===payF);
+  const ef=cuts.reduce((a,b)=>a+(b.ef||0),0);
+  const tr=cuts.reduce((a,b)=>a+(b.tr||0),0);
+  const total=ef+tr;
+  document.getElementById('repKpiRow').innerHTML=`
+    <div class="kpi"><div class="kpi-l">Total Cortes</div><div class="kpi-v white">${cuts.length}</div></div>
+    <div class="kpi"><div class="kpi-l">Total Efectivo</div><div class="kpi-v green">${fmt(ef)}</div><div class="kpi-s">${fmtFull(ef)}</div></div>
+    <div class="kpi"><div class="kpi-l">Total Transferencia</div><div class="kpi-v">${fmt(tr)}</div><div class="kpi-s">${fmtFull(tr)}</div></div>
+    <div class="kpi"><div class="kpi-l">Ingreso Total</div><div class="kpi-v">${fmt(total)}</div><div class="kpi-s">${fmtFull(total)}</div></div>`;
+  // Por barbero
+  const barbers=getBarbers();
+  document.getElementById('repBarberBody').innerHTML=barbers.map(b=>{
+    const bc=cuts.filter(c=>c.barberId===b.id);
+    const bef=bc.reduce((a,x)=>a+(x.ef||0),0);
+    const btr=bc.reduce((a,x)=>a+(x.tr||0),0);
+    const bt=bef+btr;
+    const pct=total>0?((bt/total)*100).toFixed(1):0;
+    if(!bc.length)return`<tr><td>${b.name}</td><td class="text-muted">0</td><td>—</td><td>—</td><td>—</td><td class="text-muted">0%</td></tr>`;
+    return`<tr><td><strong>${b.name}</strong></td><td class="text-big">${bc.length}</td><td class="text-green">${fmtFull(bef)}</td><td class="text-gold">${fmtFull(btr)}</td><td class="text-big">${fmtFull(bt)}</td><td><span class="badge b-gray">${pct}%</span></td></tr>`;
+  }).join('');
+  // Tabla detallada
+  document.getElementById('repCount').textContent=cuts.length+' registros';
+  const sorted=[...cuts].sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  document.getElementById('repTableBody').innerHTML=sorted.length?sorted.map(c=>`<tr>
+    <td class="text-muted" style="font-size:11px;">${dateStr(c.ts)}</td>
+    <td class="text-muted" style="font-size:11px;">${timeStr(c.ts)}</td>
+    <td>${c.barberName}</td>
+    <td>${c.anon?`<span class="tag-anon">Anónimo</span>`:c.client||'—'}</td>
+    <td>${c.service}</td>
+    <td class="text-green">${fmtFull(c.ef||0)}</td>
+    <td class="text-gold">${fmtFull(c.tr||0)}</td>
+    <td><span class="text-big">${fmtFull((c.ef||0)+(c.tr||0))}</span></td>
+    <td>${payBadge(c)}</td>
+  </tr>`).join(''):`<tr><td colspan="9" class="tbl-empty">Sin registros para este período.</td></tr>`;
+  document.getElementById('repTotLabel').innerHTML=`Efectivo: <strong class="text-green">${fmtFull(ef)}</strong> &nbsp;·&nbsp; Transferencia: <strong class="text-gold">${fmtFull(tr)}</strong> &nbsp;·&nbsp; Total: <strong>${fmtFull(total)}</strong>`;
+}
+
+// ============================================================
+// EQUIPO
+// ============================================================
+function renderEquipo(){
+  const barbers=getBarbers();
+  document.getElementById('barberCards').innerHTML=barbers.map(b=>`
+    <div class="bc">
+      <div class="bc-top">
+        <div class="bc-av" id="bcAv_${b.id}">${b.photo?`<img src="${b.photo}">`:`${b.name.split(' ').map(n=>n[0]).join('').substring(0,2)}`}</div>
+        <div><div class="bc-name">${b.name}</div><div class="bc-role">${b.role}</div></div>
+      </div>
+      <div class="bc-body">
+        <div class="bc-stat">
+          <span class="bc-stat-l">Disponibilidad</span>
+          <div class="toggle-grp">
+            <button class="tgl ${b.status==='disponible'?'on-green':''}" onclick="setBarberStatus(${b.id},'disponible',this)">Disponible</button>
+            <button class="tgl ${b.status==='inactivo'?'on-red':''}" onclick="setBarberStatus(${b.id},'inactivo',this)">Inactivo</button>
+          </div>
+        </div>
+        <input type="file" id="bpInput_${b.id}" accept="image/*" onchange="uploadBarberPhoto(${b.id},this)">
+        <button class="upload-btn" onclick="document.getElementById('bpInput_${b.id}').click()">📷 Subir Foto</button>
+        <button class="btn btn-xs danger" onclick="deleteBarber(${b.id})" style="width:100%;margin-top:6px;justify-content:center;">Eliminar barbero</button>
+      </div>
+    </div>`).join('');
+}
+let newBarberModal=null;
+function openBarberModal(){document.getElementById('barberModal').classList.add('open');}
+function closeBarberModal(){document.getElementById('barberModal').classList.remove('open');}
+function saveNewBarber(){
+  const name=document.getElementById('bName').value.trim();
+  const user=document.getElementById('bUser').value.trim().toLowerCase();
+  const pass=document.getElementById('bPass').value;
+  const role=document.getElementById('bRole').value.trim()||'Barbero';
+  const spec=document.getElementById('bSpec').value.trim()||'Barbero profesional.';
+  const stars=parseInt(document.getElementById('bStars').value)||5;
+  const status=document.getElementById('bStatus').value;
+  if(!name||!user||!pass){showNotif('Error','Nombre, usuario y contraseña son obligatorios.');return;}
+  const accs=getAccounts();
+  if(accs[user]){showNotif('Error','Ese nombre de usuario ya existe.');return;}
+  const barbers=getBarbers();
+  const newId=Date.now();
+  barbers.push({id:newId,name,role,spec,stars,status,photo:''});
+  saveBarbers(barbers);
+  const custom=DB.get('accounts',{});
+  custom[user]={pass,name,role,isAdmin:false,barberId:newId};
+  DB.set('accounts',custom);
+  closeBarberModal();
+  renderEquipo();
+  populateBarberFilters();
+  ['bName','bUser','bPass','bRole','bSpec'].forEach(id=>document.getElementById(id).value='');
+  showNotif('Barbero Creado',`${name} ya puede acceder con usuario "${user}"`);
+}
+function setBarberStatus(id,s,btn){
+  const barbers=getBarbers();const b=barbers.find(x=>x.id===id);if(!b)return;
+  b.status=s;saveBarbers(barbers);
+  const card=btn.closest('.toggle-grp');
+  card.querySelectorAll('.tgl').forEach(t=>t.className='tgl');
+  btn.className='tgl '+(s==='disponible'?'on-green':'on-red');
+  showNotif('Estado Actualizado',`${b.name} → ${s}`);
+}
+function uploadBarberPhoto(id,input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const barbers=getBarbers();const b=barbers.find(x=>x.id===id);if(!b)return;
+    b.photo=e.target.result;saveBarbers(barbers);
+    document.getElementById(`bcAv_${id}`).innerHTML=`<img src="${e.target.result}">`;
+    showNotif('Foto Actualizada',b.name);
+  };r.readAsDataURL(f);
+}
+function deleteBarber(id){
+  if(!confirm('¿Eliminar este barbero permanentemente?'))return;
+  saveBarbers(getBarbers().filter(b=>b.id!==id));
+  renderEquipo();populateBarberFilters();
+  showNotif('Eliminado','Barbero eliminado del equipo.');
+}
+
+// ============================================================
+// INVENTARIO
+// ============================================================
+let invF='all',invEditId=null;
+function invStatus(i){return i.qty===0?'out':i.qty<=i.min?'low':'ok';}
+function renderInv(){
+  const inv=getInventory();
+  const search=document.querySelector('#panel-inventario .fi')?.value.toLowerCase()||'';
+  let items=inv.filter(i=>i.name.toLowerCase().includes(search)||i.cat.toLowerCase().includes(search));
+  if(invF!=='all')items=items.filter(i=>invStatus(i)===invF);
+  const lows=inv.filter(i=>invStatus(i)!=='ok').length;
+  const val=inv.reduce((a,b)=>a+b.qty*b.price,0);
+  document.getElementById('invKpiRow').innerHTML=`
+    <div class="kpi"><div class="kpi-l">Total Productos</div><div class="kpi-v white">${inv.length}</div></div>
+    <div class="kpi"><div class="kpi-l">Stock Bajo / Agotado</div><div class="kpi-v red">${lows}</div></div>
+    <div class="kpi"><div class="kpi-l">Valor Total</div><div class="kpi-v">${fmt(val)}</div><div class="kpi-s">${fmtFull(val)}</div></div>
+    <div class="kpi"><div class="kpi-l">Categorías</div><div class="kpi-v white">${[...new Set(inv.map(i=>i.cat))].length}</div></div>`;
+  document.getElementById('invBody').innerHTML=items.length?items.map(item=>{
+    const s=invStatus(item);
+    const badge=s==='ok'?`<span class="badge b-green">OK</span>`:s==='low'?`<span class="badge b-orange">Stock Bajo</span>`:`<span class="badge b-red">Agotado</span>`;
+    return`<tr>
+      <td><strong>${item.name}</strong></td>
+      <td class="text-muted">${item.cat}</td>
+      <td><span class="text-big">${item.qty}</span></td>
+      <td class="text-gold">${fmtFull(item.price)}</td>
+      <td>${fmtFull(item.qty*item.price)}</td>
+      <td>${badge}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn btn-xs success" onclick="addInvStock(${item.id})">+5</button>
+        <button class="btn btn-xs edit" onclick="editInvItem(${item.id})">Editar</button>
+        <button class="btn btn-xs danger" onclick="delInvItem(${item.id})">✕</button>
+      </td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="7" class="tbl-empty">Sin resultados.</td></tr>`;
+  document.getElementById('invFootLabel').textContent=items.length+' productos mostrados';
+  document.getElementById('invFootValue').textContent=fmtFull(val);
+}
+function setInvF(f,btn){invF=f;document.querySelectorAll('#panel-inventario .fb').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderInv();}
+function addInvStock(id){const inv=getInv();const i=inv.find(x=>x.id===id);if(!i)return;i.qty+=5;saveInv(inv);renderInv();showNotif('+5 Stock',i.name);}
+function delInvItem(id){if(!confirm('¿Eliminar?'))return;saveInv(getInv().filter(i=>i.id!==id));renderInv();showNotif('Eliminado','Producto eliminado');}
+function openInvModal(){invEditId=null;document.getElementById('invMT').textContent='NUEVO PRODUCTO';['iName','iQty','iPrice','iMin'].forEach(id=>document.getElementById(id).value='');document.getElementById('iCat').value='Fijadores';document.getElementById('invModal').classList.add('open');}
+function editInvItem(id){const i=getInv().find(x=>x.id===id);if(!i)return;invEditId=id;document.getElementById('invMT').textContent='EDITAR PRODUCTO';document.getElementById('iName').value=i.name;document.getElementById('iCat').value=i.cat;document.getElementById('iQty').value=i.qty;document.getElementById('iPrice').value=i.price;document.getElementById('iMin').value=i.min;document.getElementById('invModal').classList.add('open');}
+function closeInvModal(){document.getElementById('invModal').classList.remove('open');}
+function saveInvItem(){
+  const name=document.getElementById('iName').value.trim();
+  if(!name){showNotif('Error','El nombre es obligatorio');return;}
+  const inv=getInv();
+  const p={id:invEditId||Date.now(),name,cat:document.getElementById('iCat').value,qty:parseInt(document.getElementById('iQty').value)||0,price:parseInt(document.getElementById('iPrice').value)||0,min:parseInt(document.getElementById('iMin').value)||5};
+  if(invEditId){const idx=inv.findIndex(i=>i.id===invEditId);if(idx>-1)inv[idx]=p;}else inv.unshift(p);
+  saveInv(inv);renderInv();closeInvModal();
+  showNotif(invEditId?'Producto Actualizado':'Producto Agregado',`"${name}"`);
+}
+
+// ============================================================
+// EXCEL EXPORTS (usando SheetJS)
+// ============================================================
+function buildCutsSheet(cuts){
+  return cuts.map(c=>({
+    'Fecha':dateStr(c.ts),'Hora':timeStr(c.ts),
+    'Barbero':c.barberName,
+    'Cliente':c.anon?'Anónimo (presencial)':c.client||'—',
+    'Servicio':c.service,
+    'Efectivo':c.ef||0,'Transferencia':c.tr||0,
+    'Total':(c.ef||0)+(c.tr||0),
+    'Forma de Pago':c.payType.charAt(0).toUpperCase()+c.payType.slice(1),
+  }));
+}
+function exportExcelGlobal(){
+  const cuts=getCuts();
+  if(!cuts.length){showNotif('Sin datos','No hay cortes registrados aún.');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildCutsSheet(cuts)),'Todos los Cortes');
+  // Por barbero
+  getBarbers().forEach(b=>{
+    const bc=cuts.filter(c=>c.barberId===b.id);
+    if(bc.length) XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildCutsSheet(bc)),b.name.substring(0,28));
+  });
+  // Inventario
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(getInv().map(i=>({'Producto':i.name,'Categoría':i.cat,'Cantidad':i.qty,'Precio Unitario':i.price,'Valor Total':i.qty*i.price,'Stock Mínimo':i.min,'Estado':invStatus(i)==='ok'?'OK':invStatus(i)==='low'?'Stock Bajo':'Agotado'}))),'Inventario');
+  XLSX.writeFile(wb,`BLADE_Reporte_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showNotif('✓ Excel Exportado','Archivo descargado exitosamente.');
+}
+function exportExcelMyCuts(){
+  if(!CU)return;
+  let cuts=getCuts();
+  if(!CU.isAdmin)cuts=cuts.filter(c=>c.barberId===CU.barberId);
+  if(!cuts.length){showNotif('Sin datos','Sin cortes registrados.');return;}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(buildCutsSheet(cuts)),'Mis Cortes');
+  XLSX.writeFile(wb,`BLADE_MisCortes_${CU.name.replace(' ','_')}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showNotif('✓ Excel Exportado','Archivo descargado.');
+}
+function exportExcelFull(){
+  exportExcelGlobal();
+}
+function exportExcelInv(){
+  const inv=getInv();
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(inv.map(i=>({'Producto':i.name,'Categoría':i.cat,'Cantidad':i.qty,'Precio Unitario':i.price,'Valor Total':i.qty*i.price,'Stock Mínimo':i.min,'Estado':invStatus(i)==='ok'?'OK':invStatus(i)==='low'?'Stock Bajo':'Agotado'}))),'Inventario');
+  XLSX.writeFile(wb,`BLADE_Inventario_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showNotif('✓ Excel Exportado','Inventario exportado.');
+}
+
+// ============================================================
+// CURSOR
+// ============================================================
+const cur=document.getElementById('cur'),curR=document.getElementById('curRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function anim(){cur.style.left=mx+'px';cur.style.top=my+'px';rx+=(mx-rx)*.14;ry+=(my-ry)*.14;curR.style.left=rx+'px';curR.style.top=ry+'px';requestAnimationFrame(anim);})();
+document.addEventListener('mouseover',e=>{if(['BUTTON','INPUT','SELECT','A'].includes(e.target.tagName)||e.target.classList.contains('nav-it')){curR.style.width='42px';curR.style.height='42px';curR.style.borderColor='rgba(201,168,76,.8)';}});
+document.addEventListener('mouseout',e=>{if(['BUTTON','INPUT','SELECT','A'].includes(e.target.tagName)||e.target.classList.contains('nav-it')){curR.style.width='28px';curR.style.height='28px';curR.style.borderColor='rgba(201,168,76,.35)';}});
+
+// ============================================================
+// NOTIFICACIONES
+// ============================================================
+let notifTimer=null;
+function showNotif(t,m){
+  clearTimeout(notifTimer);
+  const n=document.getElementById('notif');
+  document.getElementById('notifT').textContent=t;
+  document.getElementById('notifM').textContent=m;
+  n.classList.add('show');
+  notifTimer=setTimeout(()=>n.classList.remove('show'),3200);
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.getElementById('repPeriod').addEventListener('change',function(){
+  document.getElementById('customRange').style.display=this.value==='custom'?'flex':'none';
+  renderReportes();
+});
+</script>
+</body>
+</html>
