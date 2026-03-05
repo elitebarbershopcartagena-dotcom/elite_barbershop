@@ -179,6 +179,7 @@ const BladeDB = (() => {
     const out = [];
     _ls.get('cache_appts', [])
       .filter(a =>
+        a && a.barberId != null && a.fecha && a.hora &&
         String(a.barberId) === String(barberId) && a.fecha === fecha &&
         (a.estado === 'pending' || a.estado === 'confirmed' ||
          a.estado === 'pendiente' || a.estado === 'confirmada'))
@@ -187,7 +188,7 @@ const BladeDB = (() => {
         out.push({ start: s, end: s + (a.duracion || 30) });
       });
     _ls.get('cache_blocks', [])
-      .filter(b => String(b.barberId) === String(barberId) && b.fecha === fecha)
+      .filter(b => b && b.barberId != null && String(b.barberId) === String(barberId) && b.fecha === fecha)
       .forEach(b => out.push({ start: labelToMins(b.horaInicio), end: labelToMins(b.horaFin) }));
     return out;
   }
