@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BLADE — Panel Administrativo</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="cur" id="cur"></div>
+<div class="cur-ring" id="curRing"></div>
+
+<!-- ══════ LOGIN ══════ -->
+<div id="loginWrap">
+  <div class="login-card">
+    <div class="login-brand">BLADE</div>
+    <div class="login-tag">Panel Administrativo</div>
+    <div class="lf"><label>Usuario</label><input id="lu" type="text" placeholder="Ingresa tu usuario"></div>
+    <div class="lf"><label>Contraseña</label><input id="lp" type="password" placeholder="••••••••"></div>
+    <button class="btn-login" onclick="doLogin()">Ingresar al Panel</button>
+    <div class="login-err" id="lerr"></div>
+    <div class="login-hint">admin / blade2024 &nbsp;·&nbsp; juan / barber1 &nbsp;·&nbsp; carlos / barber2 &nbsp;·&nbsp; andres / barber3</div>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div id="app" style="display:flex;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo"><div class="sb-logo-txt">BLADE</div><div class="sb-logo-sub">Panel Admin</div></div>
+    <div class="sb-user">
+      <div class="sb-av" id="sbAv">—</div>
+      <div><div class="sb-uname" id="sbName">—</div><div class="sb-urole" id="sbRole">—</div></div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Dashboard</div>
+      <div class="nav-it active" onclick="gotoPanel('dashboard',this)"><span class="ni">📊</span> Resumen General</div>
+
+      <div class="sb-section" style="margin-top:12px;">Mi Cuenta</div>
+      <div class="nav-it" onclick="gotoPanel('cortes',this)"><span class="ni">✂️</span> Registrar Cortes</div>
+      <div class="nav-it" onclick="gotoPanel('miperfil',this)"><span class="ni">👤</span> Mi Perfil</div>
+
+      <div class="sb-section admin-only" style="margin-top:12px;">Agenda</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('agenda',this)"><span class="ni">📅</span> Citas del Día</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('bloqueos',this)"><span class="ni">🔒</span> Bloqueos</div>
+
+      <div class="sb-section admin-only" style="margin-top:12px;">Administración</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('reportes',this)"><span class="ni">📈</span> Reportes</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('equipo',this)"><span class="ni">👥</span> Equipo</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('servicios',this)"><span class="ni">✂️</span> Servicios</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('inventario',this)"><span class="ni">📦</span> Inventario</div>
+      <div class="nav-it admin-only" onclick="gotoPanel('contacto',this)"><span class="ni">📞</span> Contacto</div>
+
+      <div class="sb-section" style="margin-top:12px;">Acceso</div>
+      <div class="nav-it" onclick="window.open('../index.html','_blank')"><span class="ni">🌐</span> Ver Página Pública</div>
+    </nav>
+    <div class="sb-foot"><button class="btn-logout" onclick="logout()">↩ Cerrar Sesión</button></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="ph">
+        <div><div class="pt-tag">Vista General</div><div class="pt">DASHBOARD</div><div class="pt-sub" id="dashDate">—</div></div>
+        <div class="ph-actions"><button class="btn btn-secondary" onclick="exportExcelGlobal()">⬇ Exportar Excel</button></div>
+      </div>
+      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">HOY</div>
+      <div class="kpi-row c4" id="kpiHoyRow" style="margin-bottom:20px;"></div>
+      <div style="display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;">
+        <span style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);">Filtrar:</span>
+        <div id="barberFilterBtns" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">ACUMULADO TOTAL</div>
+      <div class="kpi-row c4" id="kpiTotalRow" style="margin-bottom:28px;"></div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">CORTES RECIENTES</div>
+          <select class="fi" style="max-width:180px;" id="dashRecentFilter" onchange="renderDashboard()"><option value="all">Todos</option></select>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl"><thead><tr><th>Barbero</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th><th>Fecha/Hora</th></tr></thead><tbody id="dashRecentBody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CORTES ══ -->
+    <div class="panel" id="panel-cortes">
+      <div class="ph">
+        <div><div class="pt-tag">Registro del día</div><div class="pt">MIS CORTES</div><div class="pt-sub" id="cortesUserLabel">—</div></div>
+        <div class="ph-actions"><button class="btn btn-secondary" onclick="exportExcelMyCuts()">⬇ Exportar</button></div>
+      </div>
+      <div class="kpi-row c4" id="myKpiRow" style="margin-bottom:28px;"></div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-head"><div class="card-title">REGISTRAR SERVICIO</div></div>
+        <div class="cut-form-wrap">
+          <div class="cut-form">
+            <div class="fg" style="min-width:160px;"><label>Cliente</label><input id="cClient" type="text" placeholder="Nombre o déjalo vacío"></div>
+            <div class="fg"><label>Servicio</label><select id="cService" onchange="autoPrice()"></select></div>
+            <div class="fg" style="max-width:150px;"><label>Valor (COP)</label><input id="cValue" type="number" placeholder="0" min="0"></div>
+            <div class="fg"><label>Forma de Pago</label>
+              <select id="cPayType" onchange="toggleSplit()">
+                <option value="efectivo">💵 Efectivo</option>
+                <option value="transferencia">📲 Transferencia</option>
+                <option value="mixto">🔀 Mixto</option>
+              </select>
+            </div>
+            <div class="fg" style="max-width:80px;display:flex;flex-direction:column;justify-content:flex-end;">
+              <label style="display:flex;align-items:center;gap:6px;cursor:none;"><input id="cAnon" type="checkbox" style="accent-color:var(--gold);cursor:none;"> Anón.</label>
+            </div>
+            <button class="btn btn-primary" onclick="addCut()" style="align-self:flex-end;">+ Registrar</button>
+          </div>
+        </div>
+        <div class="split-box" id="splitBox">
+          <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Desglose Pago Mixto</div>
+          <div class="form-grid c3">
+            <div class="fg"><label>Efectivo (COP)</label><input id="sEf" type="number" placeholder="0" oninput="calcRemainder()"></div>
+            <div class="fg"><label>Transferencia (COP)</label><input id="sTr" type="number" placeholder="0" oninput="calcRemainder()"></div>
+            <div class="fg"><label>Diferencia</label><input id="sRem" type="number" placeholder="—" readonly></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">HISTORIAL</div>
+          <select class="fi" style="max-width:160px;" id="myCutsDateFilter" onchange="renderCortes()">
+            <option value="today">Hoy</option><option value="week">Esta semana</option>
+            <option value="month">Este mes</option><option value="all">Todos</option>
+          </select>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl"><thead><tr><th>#</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th><th>Hora</th><th></th></tr></thead><tbody id="myCutsBody"></tbody></table>
+        </div>
+        <div class="totals-row" id="myCutsTotals"></div>
+      </div>
+    </div>
+
+    <!-- ══ MI PERFIL ══ -->
+    <div class="panel" id="panel-miperfil">
+      <div class="ph"><div><div class="pt-tag">Configuración</div><div class="pt">MI PERFIL</div><div class="pt-sub">Edita tu información pública y cuenta.</div></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+        <div class="card">
+          <div class="card-head"><div class="card-title">FOTO Y ESTADO</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:16px;">
+            <div style="display:flex;align-items:center;gap:20px;">
+              <div id="profilePhotoPreview" style="width:96px;height:96px;overflow:hidden;background:var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--gold);flex-shrink:0;"></div>
+              <div style="flex:1;">
+                <input type="file" id="profilePhotoInput" accept="image/*" onchange="uploadMyPhoto(this)">
+                <button class="upload-btn" onclick="document.getElementById('profilePhotoInput').click()">📷 Subir / Cambiar Foto</button>
+              </div>
+            </div>
+            <div class="divider"></div>
+            <div>
+              <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px;">Mi Disponibilidad</div>
+              <div class="tgl-grp">
+                <button class="tgl" id="myTogAvail" onclick="setMyStatus('disponible')">● Disponible</button>
+                <button class="tgl" id="myTogInact" onclick="setMyStatus('inactivo')">● Inactivo</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">DATOS PÚBLICOS</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:14px;">
+            <div class="fg"><label>Nombre visible</label><input type="text" id="pName" placeholder="Tu nombre completo"></div>
+            <div class="fg"><label>Especialidad / Rol</label><input type="text" id="pRole" placeholder="Ej: Maestro Barbero"></div>
+            <div class="fg"><label>Descripción</label><textarea id="pSpec" placeholder="Tu experiencia..."></textarea></div>
+            <div class="fg"><label>Estrellas (1–5)</label><select id="pStars"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+            <button class="btn btn-primary" onclick="saveMyProfile()" style="align-self:flex-start;">Guardar Cambios</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">CAMBIAR CONTRASEÑA</div></div>
+          <div style="padding:24px;display:flex;flex-direction:column;gap:14px;">
+            <div class="fg"><label>Contraseña Actual</label><input type="password" id="pwOld" placeholder="••••••••"></div>
+            <div class="fg"><label>Nueva Contraseña</label><input type="password" id="pwNew" placeholder="••••••••"></div>
+            <div class="fg"><label>Confirmar Nueva</label><input type="password" id="pwConf" placeholder="••••••••"></div>
+            <button class="btn btn-primary" onclick="changePassword()" style="align-self:flex-start;">Actualizar Contraseña</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ AGENDA ══ -->
+    <div class="panel" id="panel-agenda">
+      <div class="ph">
+        <div><div class="pt-tag">Agenda</div><div class="pt">CITAS DEL DÍA</div><div class="pt-sub">Confirma, cancela o registra citas presenciales.</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-primary" onclick="openCitaPresModal()">+ Cita Presencial</button>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <div style="padding:14px 20px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div class="fg" style="min-width:160px;"><label>Fecha</label><input type="date" id="agendaDate" class="fi"></div>
+          <div class="fg" style="min-width:160px;"><label>Barbero</label><select id="agendaBarberFilter" class="fi"><option value="all">Todos</option></select></div>
+          <div class="fg" style="min-width:140px;"><label>Estado</label>
+            <select id="agendaEstadoFilter" class="fi">
+              <option value="all">Todos</option>
+              <option value="pendiente">Pendiente</option>
+              <option value="confirmada">Confirmada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-row c4" id="agendaKpi" style="margin-bottom:20px;"></div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">CITAS</div></div>
+        <div class="tbl-wrap">
+          <table class="tbl">
+            <thead><tr><th>Hora</th><th>Barbero</th><th>Cliente</th><th>Teléfono</th><th>Servicio</th><th>Precio</th><th>Estado</th><th>Origen</th><th>Acciones</th></tr></thead>
+            <tbody id="agendaBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BLOQUEOS ══ -->
+    <div class="panel" id="panel-bloqueos">
+      <div class="ph">
+        <div><div class="pt-tag">Agenda</div><div class="pt">BLOQUEOS</div><div class="pt-sub">Bloquea rangos horarios y gestiona disponibilidad por día.</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+        <!-- Crear bloqueo -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">NUEVO BLOQUEO</div></div>
+          <div style="padding:20px;display:flex;flex-direction:column;gap:14px;">
+            <div class="fg"><label>Barbero</label><select id="blkBarber" class="fi"></select></div>
+            <div class="form-grid c2">
+              <div class="fg"><label>Fecha</label><input type="date" id="blkFecha" class="fi"></div>
+              <div class="fg"><label>Motivo (opcional)</label><input type="text" id="blkMotivo" class="fi" placeholder="Ej: Descanso"></div>
+            </div>
+            <div class="form-grid c2">
+              <div class="fg"><label>Desde</label><select id="blkInicio" class="fi"></select></div>
+              <div class="fg"><label>Hasta</label><select id="blkFin" class="fi"></select></div>
+            </div>
+            <button class="btn btn-primary" onclick="crearBloqueo()" style="align-self:flex-start;">Crear Bloqueo</button>
+          </div>
+        </div>
+        <!-- Lista de bloqueos -->
+        <div class="card">
+          <div class="card-head"><div class="card-title">BLOQUEOS ACTIVOS</div><div style="font-size:11px;color:var(--muted);">Para la fecha y barbero seleccionados</div></div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Rango</th><th>Motivo</th><th>Acción</th></tr></thead>
+              <tbody id="blkList"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- Disponibilidad por día (próximos 7 días) -->
+      <div class="pt-tag" style="margin-bottom:16px;">— DISPONIBILIDAD POR DÍA (próximos 7 días)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;" id="barberDaysGrid"></div>
+    </div>
+
+    <!-- ══ REPORTES ══ -->
+    <div class="panel" id="panel-reportes">
+      <div class="ph">
+        <div><div class="pt-tag">Administrador</div><div class="pt">REPORTES</div><div class="pt-sub">Análisis de ingresos por barbero y período.</div></div>
+        <div class="ph-actions"><button class="btn btn-primary" onclick="exportExcelGlobal()">⬇ Exportar Excel</button></div>
+      </div>
+      <div class="card" style="margin-bottom:24px;">
+        <div style="padding:16px 24px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+          <div class="fg" style="min-width:140px;"><label>Período</label>
+            <select id="repPeriod" class="fi">
+              <option value="today">Hoy</option><option value="week">Esta semana</option>
+              <option value="month">Este mes</option><option value="custom">Rango personalizado</option>
+              <option value="all">Todo el histórico</option>
+            </select>
+          </div>
+          <div id="customRange" style="display:none;gap:10px;flex-wrap:wrap;">
+            <div class="fg"><label>Desde</label><input type="date" id="repFrom" class="fi"></div>
+            <div class="fg"><label>Hasta</label><input type="date" id="repTo" class="fi"></div>
+          </div>
+          <div class="fg" style="min-width:160px;"><label>Barbero</label><select id="repBarber" class="fi"><option value="all">Todos</option></select></div>
+          <div class="fg" style="min-width:140px;"><label>Forma de Pago</label>
+            <select id="repPay" class="fi">
+              <option value="all">Todas</option><option value="efectivo">Efectivo</option>
+              <option value="transferencia">Transferencia</option><option value="mixto">Mixto</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="kpi-row c4" id="repKpiRow" style="margin-bottom:24px;"></div>
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-head"><div class="card-title">DESGLOSE POR BARBERO</div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Barbero</th><th>Cortes</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>% del total</th></tr></thead><tbody id="repBarberBody"></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">DETALLE COMPLETO</div><div id="repCount" style="font-size:11px;color:var(--muted);">0 registros</div></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Fecha</th><th>Hora</th><th>Barbero</th><th>Cliente</th><th>Servicio</th><th>Efectivo</th><th>Transferencia</th><th>Total</th><th>Pago</th></tr></thead><tbody id="repTableBody"></tbody></table></div>
+        <div class="tbl-foot"><span id="repTotLabel" class="text-muted">—</span></div>
+      </div>
+    </div>
+
+    <!-- ══ EQUIPO ══ -->
+    <div class="panel" id="panel-equipo">
+      <div class="ph">
+        <div><div class="pt-tag">Administración</div><div class="pt">EQUIPO</div><div class="pt-sub">Gestiona barberos. Los cambios se reflejan en la página pública.</div></div>
+        <div class="ph-actions"><button class="btn btn-primary" onclick="openBarberModal()">+ Agregar Barbero</button></div>
+      </div>
+      <div class="bc-grid" id="barberCards"></div>
+    </div>
+
+    <!-- ══ SERVICIOS ══ -->
+    <div class="panel" id="panel-servicios">
+      <div class="ph">
+        <div><div class="pt-tag">Administración</div><div class="pt">SERVICIOS</div><div class="pt-sub">Duración de cada servicio controla la disponibilidad en la agenda.</div></div>
+        <div class="ph-actions"><button class="btn btn-primary" onclick="openSvcModal()">+ Nuevo Servicio</button></div>
+      </div>
+      <div class="svc-grid" id="svcGrid"></div>
+    </div>
+
+    <!-- ══ INVENTARIO ══ -->
+    <div class="panel" id="panel-inventario">
+      <div class="ph">
+        <div><div class="pt-tag">Administración</div><div class="pt">INVENTARIO</div><div class="pt-sub">Control de stock y productos.</div></div>
+        <div class="ph-actions">
+          <button class="btn btn-secondary" onclick="exportExcelInv()">⬇ Exportar</button>
+          <button class="btn btn-primary" onclick="openInvModal()">+ Agregar Producto</button>
+        </div>
+      </div>
+      <div class="kpi-row c4" id="invKpiRow" style="margin-bottom:24px;"></div>
+      <div class="card">
+        <div class="fbar">
+          <input class="fi" type="text" placeholder="Buscar producto..." oninput="renderInv()">
+          <button class="fb active" onclick="setInvFilter('all',this)">Todos</button>
+          <button class="fb" onclick="setInvFilter('ok',this)">OK</button>
+          <button class="fb" onclick="setInvFilter('low',this)">Bajo</button>
+          <button class="fb" onclick="setInvFilter('out',this)">Agotado</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl"><thead><tr><th>Producto</th><th>Categoría</th><th>Cantidad</th><th>Precio Unit.</th><th>Valor Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="invBody"></tbody></table>
+        </div>
+        <div class="tbl-foot">
+          <span class="text-muted" id="invFootLabel">—</span>
+          <span class="text-gold text-big" id="invFootValue">$0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CONTACTO ══ -->
+    <div class="panel" id="panel-contacto">
+      <div class="ph"><div><div class="pt-tag">Administración</div><div class="pt">CONTACTO</div><div class="pt-sub">Edita la información de contacto que aparece en la página pública.</div></div></div>
+      <div class="card" style="max-width:700px;">
+        <div class="card-head"><div class="card-title">INFORMACIÓN DE CONTACTO</div></div>
+        <div style="padding:28px;display:flex;flex-direction:column;gap:16px;">
+          <div class="contact-form-grid">
+            <div class="fg"><label>Teléfono / WhatsApp</label><input id="cPhone" type="text" placeholder="+57 310 000 0000"></div>
+            <div class="fg"><label>Número WhatsApp (sin + ni espacios)</label><input id="cWhatsapp" type="text" placeholder="573100000000"></div>
+            <div class="fg"><label>Correo Electrónico</label><input id="cEmail" type="email" placeholder="blade@barberia.co"></div>
+            <div class="fg"><label>Instagram</label><input id="cInsta" type="text" placeholder="@BladeBarberia"></div>
+            <div class="fg"><label>Dirección</label><input id="cAddress" type="text" placeholder="Calle del Bouquet #36-127"></div>
+            <div class="fg"><label>Ciudad</label><input id="cCity" type="text" placeholder="Cartagena, Bolívar"></div>
+            <div class="fg"><label>Horario semana</label><input id="cSched1" type="text" placeholder="Lun – Sáb: 8:00 AM – 8:00 PM"></div>
+            <div class="fg"><label>Horario domingo</label><input id="cSched2" type="text" placeholder="Dom: 9:00 AM – 3:00 PM"></div>
+          </div>
+          <button class="btn btn-primary" onclick="saveContact()" style="align-self:flex-start;margin-top:8px;">💾 Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ══ MODAL: NUEVO BARBERO ══ -->
+<div class="modal-bg" id="barberModal">
+  <div class="modal-box">
+    <div class="modal-title">NUEVO BARBERO</div>
+    <div class="form-grid c2">
+      <div class="fg"><label>Nombre completo</label><input id="bName" type="text" placeholder="Ej: Pedro García"></div>
+      <div class="fg"><label>Usuario de acceso</label><input id="bUser" type="text" placeholder="ej: pedro"></div>
+      <div class="fg"><label>Contraseña</label><input id="bPass" type="password" placeholder="••••••••"></div>
+      <div class="fg"><label>Rol / Especialidad</label><input id="bRole" type="text" placeholder="Ej: Barbero Junior"></div>
+    </div>
+    <div class="fg" style="margin-top:14px;"><label>Descripción pública</label><textarea id="bSpec" placeholder="Descripción para la página pública..."></textarea></div>
+    <div class="form-grid c2" style="margin-top:14px;">
+      <div class="fg"><label>Estrellas (1–5)</label><select id="bStars"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+      <div class="fg"><label>Estado inicial</label><select id="bStatus"><option value="disponible">Disponible</option><option value="inactivo">Inactivo</option></select></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closeBarberModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewBarber()" style="flex:2;">Crear Barbero</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: SERVICIO (ahora con duración) ══ -->
+<div class="modal-bg" id="svcModal">
+  <div class="modal-box">
+    <div class="modal-title" id="svcMT">NUEVO SERVICIO</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fg"><label>Nombre del Servicio</label><input id="sName" type="text" placeholder="Ej: Corte + Barba"></div>
+      <div class="fg"><label>Descripción</label><textarea id="sDesc" placeholder="Describe el servicio..."></textarea></div>
+      <div class="form-grid c2">
+        <div class="fg"><label>Precio (COP)</label><input id="sPrice" type="number" placeholder="0" min="0"></div>
+        <div class="fg">
+          <label>Duración (minutos) ⏱</label>
+          <input id="sDuracion" type="number" placeholder="30" min="5" max="240" value="30">
+          <div style="font-size:10px;color:var(--muted2);margin-top:4px;">Controla los slots bloqueados en la agenda.</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);background:var(--card);padding:12px;border:1px solid var(--border);">🎨 Se asignará automáticamente un ícono de barbería al crear.</div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closeSvcModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSvcItem()" style="flex:2;">Guardar Servicio</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: INVENTARIO ══ -->
+<div class="modal-bg" id="invModal">
+  <div class="modal-box">
+    <div class="modal-title" id="invMT">NUEVO PRODUCTO</div>
+    <div class="form-grid c2">
+      <div class="fg"><label>Nombre</label><input id="iName" type="text" placeholder="Ej: Cera Gold"></div>
+      <div class="fg"><label>Categoría</label>
+        <select id="iCat"><option>Fijadores</option><option>Cuidado Barba</option><option>Herramientas</option><option>Higiene</option><option>Aceites</option><option>Otro</option></select>
+      </div>
+      <div class="fg"><label>Cantidad</label><input id="iQty" type="number" placeholder="0" min="0"></div>
+      <div class="fg"><label>Precio Unitario (COP)</label><input id="iPrice" type="number" placeholder="0" min="0"></div>
+      <div class="fg"><label>Stock Mínimo</label><input id="iMin" type="number" placeholder="5" min="0"></div>
+    </div>
+    <div class="fg" style="margin-top:14px;"><label>Descripción breve (aparece en la página pública)</label>
+      <input id="iDesc" type="text" placeholder="Ej: Fijación fuerte con acabado brillante.">
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closeInvModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveInvItem()" style="flex:2;">Guardar Producto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL: CITA PRESENCIAL ══ -->
+<div class="modal-bg" id="citaPresModal">
+  <div class="modal-box">
+    <div class="modal-title">CITA PRESENCIAL</div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fg"><label>Nombre del Cliente</label><input id="cpNombre" type="text" placeholder="Nombre completo"></div>
+      <div class="fg"><label>Teléfono (opcional)</label><input id="cpTelefono" type="tel" placeholder="+57 300 000 0000"></div>
+      <div class="fg"><label>Servicio</label><select id="cpService"></select></div>
+      <div class="form-grid c2">
+        <div class="fg"><label>Barbero</label><select id="cpBarber"></select></div>
+        <div class="fg"><label>Fecha</label><input type="date" id="cpFecha"></div>
+      </div>
+      <div class="fg"><label>Hora disponible</label><select id="cpHora"></select></div>
+      <div style="font-size:11px;color:var(--muted);background:var(--card);padding:12px;border:1px solid var(--border);">
+        Las citas presenciales se confirman automáticamente y bloquean el horario del barbero.
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-secondary" onclick="closeCitaPresModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCitaPresencial()" style="flex:2;">Registrar Cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- NOTIFICACIÓN -->
+<div class="notif" id="notif">
+  <div class="notif-t" id="notifT">—</div>
+  <div class="notif-m" id="notifM">—</div>
+</div>
+
+<script src="../js/blade-db.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+/* ═══════════════════════════════════════════════════════════
+   BLADE BARBERÍA  —  styles.css
+   Página pública (index.html)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  --black:      #080808;
+  --dark:       #0f0f0f;
+  --surface:    #151515;
+  --border:     #222;
+  --gold:       #c9a84c;
+  --gold-light: #e8c96a;
+  --gold-dim:   #8a6e2f;
+  --gold-bg:    rgba(201,168,76,.07);
+  --white:      #f0ece4;
+  --muted:      #6b6560;
+}
+
+/* ── RESET ─────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html  { scroll-behavior: smooth; }
+body  { background: var(--black); color: var(--white);
+        font-family: 'DM Sans', sans-serif; font-weight: 300;
+        overflow-x: hidden; cursor: none; }
+
+/* ── CURSOR ─────────────────────────────────────────────── */
+.cursor      { width: 8px; height: 8px; background: var(--gold); border-radius: 50%;
+               position: fixed; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); }
+.cursor-ring { width: 36px; height: 36px; border: 1px solid rgba(201,168,76,.4); border-radius: 50%;
+               position: fixed; pointer-events: none; z-index: 9998; transform: translate(-50%,-50%);
+               transition: width .3s, height .3s, border-color .3s; }
+
+/* ── NAV ────────────────────────────────────────────────── */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 24px 48px; background: linear-gradient(to bottom, rgba(8,8,8,.97), transparent); }
+.nav-logo  { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 6px;
+             color: var(--gold); text-decoration: none; }
+.nav-links { display: flex; gap: 40px; list-style: none; }
+.nav-links a { font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+               color: var(--muted); text-decoration: none; transition: color .3s; }
+.nav-links a:hover { color: var(--white); }
+.nav-cta   { font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+             color: var(--black); background: var(--gold); padding: 10px 24px;
+             text-decoration: none; transition: background .3s; font-weight: 500; }
+.nav-cta:hover { background: var(--gold-light); }
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero { height: 100vh; min-height: 700px; display: flex; flex-direction: column;
+        justify-content: flex-end; padding: 0 48px 80px; position: relative; overflow: hidden; }
+#hexCanvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; }
+.hero-overlay { position: absolute; inset: 0; z-index: 1;
+  background: radial-gradient(ellipse 90% 90% at 50% 50%, rgba(8,8,8,.2) 0%, transparent 60%),
+              linear-gradient(to top, rgba(8,8,8,.95) 0%, rgba(8,8,8,.35) 40%, rgba(8,8,8,.55) 100%); }
+.hero-lines { position: absolute; inset: 0; overflow: hidden; z-index: 2; }
+.hero-lines::before {
+  content: ''; position: absolute; top: -200px; right: 15%; width: 1px; height: 120%;
+  background: linear-gradient(to bottom, transparent, rgba(201,168,76,.25), transparent);
+  animation: lineFloat 8s ease-in-out infinite; }
+.hero-lines::after {
+  content: ''; position: absolute; top: -200px; right: calc(15% + 80px); width: 1px; height: 120%;
+  background: linear-gradient(to bottom, transparent, rgba(201,168,76,.08), transparent);
+  animation: lineFloat 8s ease-in-out infinite 2s; }
+.hero-content { position: relative; z-index: 3; }
+.hero-tag   { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold);
+              margin-bottom: 24px; opacity: 0; animation: fadeUp 1s .3s forwards; }
+.hero-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(72px,10vw,150px);
+              line-height: .9; letter-spacing: 2px; opacity: 0; animation: fadeUp 1s .5s forwards; }
+.hero-title em { font-family: 'Playfair Display', serif; font-style: italic; color: var(--gold);
+                 display: block; font-size: .6em; letter-spacing: 4px; }
+.hero-sub  { max-width: 420px; font-size: 14px; line-height: 1.8; color: var(--muted);
+             margin-top: 32px; opacity: 0; animation: fadeUp 1s .7s forwards; }
+.hero-ctas { display: flex; gap: 20px; margin-top: 48px; opacity: 0; animation: fadeUp 1s .9s forwards; }
+.hero-scroll { position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 3;
+               font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+               display: flex; flex-direction: column; align-items: center; gap: 12px;
+               opacity: 0; animation: fadeIn 1s 1.5s forwards; }
+.scroll-line { width: 1px; height: 48px; background: linear-gradient(to bottom, var(--gold), transparent);
+               animation: scrollPulse 2s ease-in-out infinite; }
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn-primary   { background: var(--gold); color: var(--black); padding: 16px 40px;
+                 font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+                 text-decoration: none; font-weight: 500; transition: all .3s;
+                 border: none; cursor: none; display: inline-block; }
+.btn-primary:hover  { background: var(--gold-light); transform: translateY(-2px); }
+.btn-secondary { background: transparent; color: var(--white); padding: 16px 40px;
+                 font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+                 text-decoration: none; border: 1px solid rgba(255,255,255,.15); transition: all .3s; cursor: none; }
+.btn-secondary:hover { border-color: var(--gold-dim); color: var(--gold); }
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes lineFloat    { 0%,100%{opacity:1;transform:translateY(0)}  50%{opacity:.4;transform:translateY(-40px)} }
+@keyframes scrollPulse  { 0%,100%{opacity:1;transform:scaleY(1)}      50%{opacity:.4;transform:scaleY(.6)} }
+@keyframes fadeUp       { from{opacity:0;transform:translateY(40px)}  to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn       { from{opacity:0}                             to{opacity:1} }
+@keyframes pulseDot     { 0%,100%{opacity:1;transform:scale(1)}       50%{opacity:.5;transform:scale(.7)} }
+@keyframes waBounce     { 0%,100%{transform:translateY(0)}            50%{transform:translateY(-7px)} }
+
+/* ── REVEAL ──────────────────────────────────────────────── */
+.reveal         { opacity: 0; transform: translateY(50px); transition: opacity .8s ease, transform .8s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .3s; }
+.reveal-delay-4 { transition-delay: .4s; }
+
+/* ── SECTION SHARED ──────────────────────────────────────── */
+.section-tag   { font-size: 10px; letter-spacing: 5px; text-transform: uppercase; color: var(--gold); margin-bottom: 16px; }
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: clamp(48px,6vw,88px);
+                 letter-spacing: 1px; line-height: .95; }
+.section-title em { font-family: 'Playfair Display', serif; font-style: italic; color: var(--gold); }
+
+/* ── STATS ───────────────────────────────────────────────── */
+.stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px;
+         background: var(--border); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.stat-item   { background: var(--black); padding: 60px 40px; text-align: center; }
+.stat-number { font-family: 'Bebas Neue', sans-serif; font-size: 72px; color: var(--gold);
+               letter-spacing: 2px; display: block; }
+.stat-label  { font-size: 10px; letter-spacing: 4px; text-transform: uppercase;
+               color: var(--muted); margin-top: 8px; display: block; }
+
+/* ── SERVICES ────────────────────────────────────────────── */
+.services        { padding: 120px 48px; background: var(--dark); }
+.services-header { display: flex; justify-content: space-between; align-items: flex-end;
+                   margin-bottom: 80px; border-bottom: 1px solid var(--border); padding-bottom: 48px; }
+.services-grid   { display: grid; grid-template-columns: repeat(3,1fr); gap: 1px; background: var(--border); }
+.service-card    { background: var(--dark); padding: 48px 40px; position: relative;
+                   overflow: hidden; transition: background .4s; cursor: none; }
+.service-card::before { content: ''; position: absolute; bottom: 0; left: 0; width: 100%; height: 2px;
+                         background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform .4s; }
+.service-card:hover::before { transform: scaleX(1); }
+.service-card:hover { background: var(--surface); }
+.service-num   { font-family: 'Bebas Neue', sans-serif; font-size: 72px; color: rgba(201,168,76,.08);
+                 position: absolute; top: 24px; right: 32px; line-height: 1; }
+.service-icon  { font-size: 30px; margin-bottom: 24px; }
+.service-name  { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 1px; margin-bottom: 12px; }
+.service-desc  { font-size: 13px; line-height: 1.8; color: var(--muted); margin-bottom: 32px; }
+.service-price { font-family: 'Bebas Neue', sans-serif; font-size: 40px; color: var(--gold); letter-spacing: 1px; }
+.service-price span { font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--muted); margin-left: 4px; }
+
+/* ── PRODUCTS (public) ───────────────────────────────────── */
+.products        { padding: 80px 48px; background: var(--black); }
+.products-header { display: flex; justify-content: space-between; align-items: flex-end;
+                   margin-bottom: 60px; border-bottom: 1px solid var(--border); padding-bottom: 40px; }
+.products-grid   { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--border); }
+.product-card    { background: var(--black); padding: 36px 32px; transition: background .3s; cursor: none; }
+.product-card:hover { background: var(--surface); }
+.product-icon  { font-size: 24px; margin-bottom: 16px; }
+.product-name  { font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; margin-bottom: 8px; }
+.product-desc  { font-size: 12px; color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
+.product-price { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); }
+.product-price span { font-size: 12px; color: var(--muted); margin-left: 4px; }
+
+/* ── TEAM ────────────────────────────────────────────────── */
+.team      { padding: 120px 48px; background: var(--dark); }
+.team-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 32px; margin-top: 64px; }
+.team-card { background: var(--surface); border: 1px solid var(--border);
+             overflow: hidden; transition: border-color .4s, transform .3s; cursor: none; }
+.team-card:hover { border-color: var(--gold-dim); transform: translateY(-4px); }
+.team-photo { width: 100%; aspect-ratio: 1/1; overflow: hidden; background: var(--border);
+              position: relative; display: flex; align-items: center; justify-content: center; }
+.team-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
+.team-card:hover .team-photo img { transform: scale(1.06); }
+.team-photo-placeholder { font-family: 'Bebas Neue', sans-serif; font-size: 80px; color: rgba(201,168,76,.15); }
+.team-photo-overlay { position: absolute; inset: 0;
+                      background: linear-gradient(to bottom, transparent 50%, rgba(8,8,8,.85) 100%); }
+.team-status-badge { position: absolute; top: 16px; right: 16px;
+                     display: flex; align-items: center; gap: 7px; padding: 6px 14px;
+                     font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+                     font-weight: 500; backdrop-filter: blur(8px); }
+.team-status-badge.disponible { background: rgba(16,185,129,.18); border: 1px solid rgba(16,185,129,.4); color: #34d399; }
+.team-status-badge.inactivo   { background: rgba(239,68,68,.15);  border: 1px solid rgba(239,68,68,.35);  color: #f87171; }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.disponible .status-dot { box-shadow: 0 0 6px #34d399; animation: pulseDot 2s ease-in-out infinite; }
+.team-info  { padding: 28px 32px 32px; }
+.team-name  { font-family: 'Bebas Neue', sans-serif; font-size: 26px; letter-spacing: 2px; margin-bottom: 4px; }
+.team-role  { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+.team-spec  { font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 20px; }
+.team-rating .star       { color: var(--gold); font-size: 12px; }
+.team-rating .star.empty { color: var(--border); }
+
+/* ── BOOKING ─────────────────────────────────────────────── */
+.booking       { padding: 120px 48px; background: var(--black); }
+.booking-inner { display: grid; grid-template-columns: 1fr 1.2fr; gap: 80px; align-items: start; }
+.booking-title { font-size: 14px; line-height: 1.8; color: var(--muted); margin-top: 24px; }
+.booking-info-block { padding: 32px 0; border-top: 1px solid var(--border); }
+.booking-info-label { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.booking-form  { display: flex; flex-direction: column; gap: 16px; }
+.form-row      { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-field label { display: block; font-size: 10px; letter-spacing: 3px;
+                    text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.form-field input,
+.form-field select,
+.form-field textarea {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  padding: 14px 18px; outline: none; transition: border-color .3s; cursor: none; }
+.form-field select option { background: var(--surface); }
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus { border-color: var(--gold-dim); }
+.form-field textarea { resize: none; height: 100px; }
+.no-slots-msg { font-size: 12px; color: var(--muted); font-style: italic; padding: 10px 0; }
+
+/* ── CONTACT ─────────────────────────────────────────────── */
+.contact       { padding: 80px 48px; background: var(--dark); }
+.contact-grid  { display: grid; grid-template-columns: repeat(4,1fr); gap: 40px; margin-top: 60px; }
+.contact-block-title { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 20px; }
+.contact-block p, .contact-block a { font-size: 13px; color: var(--muted); text-decoration: none;
+                                      line-height: 2; display: block; transition: color .3s; }
+.contact-block a:hover { color: var(--white); }
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer         { background: var(--black); border-top: 1px solid var(--border); padding: 80px 48px 40px; }
+.footer-top    { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 60px; margin-bottom: 64px; }
+.footer-brand  { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--gold); letter-spacing: 4px; }
+.footer-tagline{ font-size: 13px; color: var(--muted); margin-top: 12px; line-height: 1.8; }
+.footer-col-title { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 24px; }
+.footer-links  { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.footer-links a{ font-size: 13px; color: var(--muted); text-decoration: none; transition: color .3s; }
+.footer-links a:hover { color: var(--white); }
+.footer-bottom { display: flex; justify-content: space-between; align-items: center;
+                 padding-top: 32px; border-top: 1px solid var(--border); font-size: 11px; color: var(--muted); }
+
+/* ── WHATSAPP ────────────────────────────────────────────── */
+.wa-float { position: fixed; bottom: 36px; right: 36px; z-index: 800;
+            width: 60px; height: 60px; border-radius: 50%; background: #25d366;
+            display: flex; align-items: center; justify-content: center;
+            text-decoration: none; cursor: none; box-shadow: 0 4px 24px rgba(37,211,102,.45);
+            transition: transform .3s, box-shadow .3s; animation: waBounce 3s ease-in-out infinite; }
+.wa-float:hover { transform: scale(1.12) !important; box-shadow: 0 6px 32px rgba(37,211,102,.65); animation: none; }
+.wa-float svg { width: 32px; height: 32px; fill: #fff; }
+.wa-tooltip { position: absolute; right: 72px; top: 50%; transform: translateY(-50%);
+              background: var(--surface); border: 1px solid var(--border);
+              padding: 8px 16px; font-size: 12px; color: var(--white); white-space: nowrap;
+              opacity: 0; pointer-events: none; transition: opacity .3s; }
+.wa-float:hover .wa-tooltip { opacity: 1; }
+
+/* ── NOTIFICATION ────────────────────────────────────────── */
+.notification { position: fixed; bottom: 40px; left: 40px; background: var(--surface);
+                border-left: 3px solid var(--gold); padding: 20px 28px; z-index: 600;
+                transform: translateX(-300%); transition: transform .4s cubic-bezier(.34,1.56,.64,1);
+                min-width: 280px; }
+.notification.show { transform: translateX(0); }
+.notif-title  { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); margin-bottom: 4px; }
+.notif-msg    { font-size: 13px; color: var(--muted); }
+
+/* ── RESPONSIVE ──────────────────────────────────────────── */
+@media (max-width: 900px) {
+  nav { padding: 20px 24px; }
+  .nav-links { display: none; }
+  .hero, .services, .team, .booking, .products, .contact { padding-left: 24px; padding-right: 24px; }
+  .services-grid, .team-grid, .products-grid { grid-template-columns: 1fr; }
+  .stats, .contact-grid { grid-template-columns: 1fr 1fr; }
+  .booking-inner { grid-template-columns: 1fr; gap: 40px; }
+  .footer-top { grid-template-columns: 1fr 1fr; }
+  .services-header, .products-header { flex-direction: column; align-items: flex-start; gap: 24px; }
+}
