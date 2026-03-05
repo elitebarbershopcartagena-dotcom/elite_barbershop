@@ -224,19 +224,19 @@ const BladeDB = (() => {
      § 8  APPOINTMENTS — CRUD HÍBRIDO
      ══════════════════════════════════════════════════════════════ */
   async function getAppointments() {
-    if (!_online()) return _ls.get('cache_appts', []);
+    if (!_online()) return (_ls.get('cache_appts', []) || []).filter(Boolean);
     try {
       const { data, error } = await _sb
         .from('appointments')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const mapped = (data || []).map(_apptFromDB);
+      const mapped = (data || []).map(_apptFromDB).filter(Boolean);
       _ls.set('cache_appts', mapped);
       return mapped;
     } catch (err) {
       console.error('[getAppointments]', err);
-      return _ls.get('cache_appts', []);
+      return (_ls.get('cache_appts', []) || []).filter(Boolean);
     }
   }
 
