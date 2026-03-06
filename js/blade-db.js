@@ -244,7 +244,7 @@ const BladeDB = (() => {
     const { clienteName, telefono, servicioId, barberId, fecha, hora, origen = 'online' } = datos;
 
     const services   = _ls.get('services', DEF_SERVICES);
-    const servicio   = services.find(s => s.id === servicioId);
+    const servicio   = services.find(s => String(s.id) === String(servicioId));
     if (!servicio) return { ok: false, razon: 'Servicio no encontrado.' };
 
     const duracion   = servicio.duracion || 30;
