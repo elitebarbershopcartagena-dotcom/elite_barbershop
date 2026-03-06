@@ -1,10 +1,12 @@
 /**
- * BLADE — main.js  v2
+ * BLADE — main.js  v3
  * Lógica de la página pública.
- * TODA la lógica de negocio se delega a BladeDB.
- * Este archivo solo maneja DOM, eventos y render.
+ * Toda lógica de negocio se delega a BladeDB (v4 — Supabase híbrido).
+ *
+ * IMPORTANTE: crearCita, cancelarCita, getAppointments son async.
+ * Todas las funciones que las llaman usan await.
  */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
   /* ── CURSOR ─────────────────────────────────────────────── */
   const cur  = document.getElementById('cur');
@@ -99,9 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* ══════════════════════════════════════════════════════════
-     RENDER — PÁGINA PÚBLICA
+     RENDER — PÁGINA PÚBLICA (síncrono — no usa Supabase)
      ══════════════════════════════════════════════════════════ */
-
   function renderServices() {
     const grid = document.getElementById('servicesGrid');
     if (!grid) return;
@@ -176,13 +177,17 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ══════════════════════════════════════════════════════════
-     BOOKING — SISTEMA INTELIGENTE
+     BOOKING — carga el cache de Supabase al iniciar
      ══════════════════════════════════════════════════════════ */
-
-  // Duración del servicio seleccionado actualmente
   let _selectedDuracion = 30;
-  // Barbero seleccionado ('auto' o id numérico)
   let _selectedBarberId = 'auto';
+
+  // Cargar citas y disponibilidad al iniciar para que el motor de slots tenga cache fresco
+  await Promise.all([
+    BladeDB.getAppointments(),
+    BladeDB.getBlocks(),
+    BladeDB.getBarberDays(),
+  ]);
 
   function renderBookingServices() {
     const sel = document.getElementById('bookService');
@@ -200,31 +205,23 @@ document.addEventListener('DOMContentLoaded', () => {
       barbers.map(b => `<option value="${b.id}" ${b.status==='inactivo'?'disabled style="color:grey"':''}>${b.name} — ${b.role}${b.status==='inactivo'?' (inactivo)':''}</option>`).join('');
   }
 
-  /**
-   * Recalcula y renderiza los slots disponibles.
-   * Si barbero = auto → usa todos los slots del primer barbero disponible para mostrar opciones
-   * pero en realidad crearCita asignará el mejor automáticamente.
-   */
   function renderTimeSlots() {
     const sel    = document.getElementById('bookTime');
     const dateEl = document.getElementById('bookDate');
     if (!sel || !dateEl) return;
 
-    const fecha    = dateEl.value;
-    const today    = BladeDB.todayISO();
-    const soloHoy  = fecha === today;
-
-    let slots = [];
+    const fecha   = dateEl.value;
+    const today   = BladeDB.todayISO();
+    const soloHoy = fecha === today;
+    let slots     = [];
 
     if (_selectedBarberId === 'auto') {
-      // Unión de slots de todos los barberos disponibles
-      const barbers = BladeDB.getBarbers().filter(b => b.status !== 'inactivo');
+      const barbers  = BladeDB.getBarbers().filter(b => b.status !== 'inactivo');
       const slotsSet = new Set();
       barbers.forEach(b => {
         BladeDB.obtenerDisponibilidadPorBarbero(b.id, fecha, _selectedDuracion, soloHoy)
                .forEach(s => slotsSet.add(s));
       });
-      // Ordenar cronológicamente
       slots = [...slotsSet].sort((a, b) => BladeDB.labelToMins(a) - BladeDB.labelToMins(b));
     } else {
       const bid = parseInt(_selectedBarberId);
@@ -236,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
       : `<option value="">⚠ Sin horarios disponibles — prueba otra fecha o barbero</option>`;
   }
 
-  // Eventos para recalcular slots
   document.getElementById('bookService')?.addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     _selectedDuracion = parseInt(opt.dataset.dur) || 30;
@@ -257,10 +253,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTimeSlots();
   }
 
-  /* ── SUBMIT BOOKING FORM ─────────────────────────────────── */
+  /* ── SUBMIT BOOKING FORM — async ─────────────────────────── */
   const bookForm = document.getElementById('bookingForm');
   if (bookForm) {
-    bookForm.addEventListener('submit', e => {
+    bookForm.addEventListener('submit', async e => {
       e.preventDefault();
 
       const clienteName = document.getElementById('bookName').value.trim();
@@ -268,14 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const servicioId  = parseInt(document.getElementById('bookService').value);
       const fecha       = document.getElementById('bookDate').value;
       const hora        = document.getElementById('bookTime').value;
-      const nota        = document.getElementById('bookNota')?.value.trim() || '';
 
       if (!clienteName || !telefono || !servicioId || !fecha || !hora) {
         showNotif('Campos incompletos', 'Por favor completa todos los campos obligatorios.');
         return;
       }
 
-      // Resolver barbero: auto → asignacionAutomatica
       let barberId = _selectedBarberId === 'auto'
         ? BladeDB.asignacionAutomatica(fecha, _selectedDuracion)
         : parseInt(_selectedBarberId);
@@ -285,44 +279,58 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const result = BladeDB.crearCita({ clienteName, telefono, servicioId, barberId, fecha, hora, origen: 'online' });
+      // Deshabilitar botón mientras se procesa
+      const submitBtn = bookForm.querySelector('[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Procesando...'; }
 
-      if (!result.ok) {
-        showNotif('No se pudo reservar', result.razon);
+      const result = await BladeDB.crearCita({ clienteName, telefono, servicioId, barberId, fecha, hora, origen: 'online' });
+
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Solicitar Cita'; }
+
+      if (!result || !result.ok) {
+        showNotif('No se pudo reservar', result?.razon || 'Error inesperado. Intenta de nuevo.');
         return;
       }
 
-      // Éxito
-      showNotif('¡Cita Solicitada!', `${result.cita.servicio} con ${result.cita.barberName} el ${fecha} a las ${hora}. Estado: pendiente de confirmación.`);
+      const offlineMsg = result.offline ? ' (guardada offline — se sincronizará cuando haya conexión)' : '';
+      showNotif(
+        '¡Cita Solicitada!',
+        `${result.cita.servicio} con ${result.cita.barberName} el ${fecha} a las ${hora}. Pendiente de confirmación.${offlineMsg}`
+      );
+
       bookForm.reset();
-      bookDateEl.value = BladeDB.todayISO();
+      if (bookDateEl) bookDateEl.value = BladeDB.todayISO();
       _selectedDuracion = 30;
       _selectedBarberId = 'auto';
       renderBookingBarbers();
       renderBookingServices();
       renderTimeSlots();
 
-      // Mostrar historial del cliente automáticamente
+      // Mostrar panel del cliente automáticamente
       document.getElementById('clientePhone').value = telefono;
-      renderClientPanel(telefono);
+      await renderClientPanel(telefono);
       document.getElementById('clientPanel')?.scrollIntoView({ behavior: 'smooth' });
     });
   }
 
   /* ══════════════════════════════════════════════════════════
-     PANEL CLIENTE — consulta historial por teléfono
+     PANEL CLIENTE — historial por teléfono
      ══════════════════════════════════════════════════════════ */
-
-  window.buscarCitasCliente = () => {
+  window.buscarCitasCliente = async () => {
     const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g, '');
     if (!tel) return;
-    renderClientPanel(tel);
+    await renderClientPanel(tel);
   };
 
-  function renderClientPanel(telefono) {
+  async function renderClientPanel(telefono) {
     const wrap = document.getElementById('clientCitas');
     if (!wrap) return;
-    const appts = BladeDB.getAppointments()
+
+    wrap.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:24px 0;text-align:center;">Buscando citas...</div>`;
+
+    // Traer desde Supabase (refresca cache)
+    const allAppts = await BladeDB.getAppointments();
+    const appts    = allAppts
       .filter(a => a.telefono === telefono)
       .sort((a, b) => new Date(b.creadaEn) - new Date(a.creadaEn));
 
@@ -335,19 +343,20 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="client-cita-row" style="background:var(--surface);border:1px solid var(--border);padding:20px 24px;margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
           <div>
-            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:6px;">${a.servicio}</div>
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:6px;">${a.servicio||'—'}</div>
             <div style="font-size:12px;color:var(--muted);line-height:2;">
               <span>👤 ${a.barberName}</span> &nbsp;·&nbsp;
               <span>📅 ${a.fecha}</span> &nbsp;·&nbsp;
               <span>🕐 ${a.hora}</span> &nbsp;·&nbsp;
-              <span>⏱ ${a.duracion} min</span>
+              <span>⏱ ${a.duracion||30} min</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px;">Precio: <strong style="color:var(--gold);">${BladeDB.fmtFull(a.precio||0)}</strong></div>
+            ${a.pending_sync ? '<div style="font-size:10px;color:var(--orange);margin-top:4px;">⚠ Pendiente de sincronización</div>' : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
             ${BladeDB.estadoBadge(a.estado)}
             ${BladeDB.origenBadge(a.origen)}
-            ${a.estado !== 'cancelada'
+            ${(a.estado !== 'cancelled' && a.estado !== 'cancelada')
               ? `<button onclick="cancelarMiCita('${a.id}')" style="background:transparent;border:1px solid rgba(239,68,68,.3);color:#f87171;padding:5px 12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:none;font-family:'DM Sans',sans-serif;transition:all .3s;" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='rgba(239,68,68,.3)'">Cancelar</button>`
               : ''}
           </div>
@@ -355,24 +364,27 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`).join('');
   }
 
-  window.cancelarMiCita = (id) => {
+  window.cancelarMiCita = async (id) => {
     if (!confirm('¿Confirmas la cancelación de esta cita?')) return;
-    const result = BladeDB.cancelarCita(id);
+    const result = await BladeDB.cancelarCita(id);
     if (!result.ok) { showNotif('Error', result.razon); return; }
     const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g, '');
-    if (tel) renderClientPanel(tel);
-    renderTimeSlots(); // liberar slot visualmente
+    if (tel) await renderClientPanel(tel);
+    renderTimeSlots();
     showNotif('Cita Cancelada', 'Tu cita fue cancelada. El slot ya está disponible.');
   };
 
   /* ── CROSS-TAB: recarga cuando admin cambia datos ─────────── */
-  window.addEventListener('storage', () => {
+  window.addEventListener('storage', async () => {
     renderServices();
     renderTeam();
     renderProducts();
     renderContact();
     renderBookingBarbers();
     renderBookingServices();
+    // Refrescar cache de disponibilidad también
+    await BladeDB.getAppointments();
+    await BladeDB.getBlocks();
     renderTimeSlots();
   });
 

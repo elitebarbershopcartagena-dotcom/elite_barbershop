@@ -22,9 +22,20 @@ const BladeDB = (() => {
   /* ══════════════════════════════════════════════════════════════
      § 1  STORAGE CORE
      ══════════════════════════════════════════════════════════════ */
+  const _CACHE_KEYS = ['cache_appts', 'cache_blocks', 'cache_barber_days'];
+
   const _ls = {
     get: (k, def = null) => {
-      try { const d = localStorage.getItem('blade_' + k); return d !== null ? JSON.parse(d) : def; }
+      try {
+        const d = localStorage.getItem('blade_' + k);
+        if (d === null) return def;
+        const parsed = JSON.parse(d);
+        // Limpiar automáticamente arrays con nulls en cache keys
+        if (_CACHE_KEYS.includes(k) && Array.isArray(parsed)) {
+          return parsed.filter(Boolean);
+        }
+        return parsed;
+      }
       catch { return def; }
     },
     set: (k, v) => {
