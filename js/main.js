@@ -1,34 +1,32 @@
 /**
- * BLADE — main.js  v3
- * Lógica de la página pública.
- * Toda lógica de negocio se delega a BladeDB (v4 — Supabase híbrido).
- *
- * IMPORTANTE: crearCita, cancelarCita, getAppointments son async.
- * Todas las funciones que las llaman usan await.
+ * BLADE — main.js v4
+ * Página pública. Toda lógica de negocio en BladeDB.
  */
 document.addEventListener('DOMContentLoaded', async () => {
 
   /* ── CURSOR ─────────────────────────────────────────────── */
   const cur  = document.getElementById('cur');
   const curR = document.getElementById('curRing');
-  let mx = 0, my = 0, rx = 0, ry = 0;
-  document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-  (function loop() {
-    cur.style.left  = mx + 'px'; cur.style.top  = my + 'px';
-    rx += (mx - rx) * 0.13;     ry += (my - ry) * 0.13;
-    curR.style.left = rx + 'px'; curR.style.top = ry + 'px';
-    requestAnimationFrame(loop);
-  })();
-  document.addEventListener('mouseover', e => {
-    if (e.target.closest('a,button,.service-card,.team-card,.product-card,input,select,textarea')) {
-      curR.style.width = '54px'; curR.style.height = '54px'; curR.style.borderColor = 'rgba(201,168,76,.85)';
-    }
-  });
-  document.addEventListener('mouseout', e => {
-    if (e.target.closest('a,button,.service-card,.team-card,.product-card,input,select,textarea')) {
-      curR.style.width = '36px'; curR.style.height = '36px'; curR.style.borderColor = 'rgba(201,168,76,.4)';
-    }
-  });
+  if (cur && curR) {
+    let mx = 0, my = 0, rx = 0, ry = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+    (function loop() {
+      cur.style.left  = mx + 'px'; cur.style.top  = my + 'px';
+      rx += (mx - rx) * 0.13;     ry += (my - ry) * 0.13;
+      curR.style.left = rx + 'px'; curR.style.top = ry + 'px';
+      requestAnimationFrame(loop);
+    })();
+    document.addEventListener('mouseover', e => {
+      if (e.target.closest('a,button,.service-card,.team-card,.product-card,input,select,textarea')) {
+        curR.style.width = '54px'; curR.style.height = '54px'; curR.style.borderColor = 'rgba(201,168,76,.85)';
+      }
+    });
+    document.addEventListener('mouseout', e => {
+      if (e.target.closest('a,button,.service-card,.team-card,.product-card,input,select,textarea')) {
+        curR.style.width = '36px'; curR.style.height = '36px'; curR.style.borderColor = 'rgba(201,168,76,.4)';
+      }
+    });
+  }
 
   /* ── HEXAGON CANVAS ─────────────────────────────────────── */
   (function initHex() {
@@ -93,15 +91,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   let notifTimer = null;
   window.showNotif = (title, msg) => {
     clearTimeout(notifTimer);
-    document.getElementById('notifT').textContent = title;
-    document.getElementById('notifM').textContent = msg;
+    const t = document.getElementById('notifT');
+    const m = document.getElementById('notifM');
     const n = document.getElementById('notification');
+    if (!t || !m || !n) return;
+    t.textContent = title;
+    m.textContent = msg;
     n.classList.add('show');
     notifTimer = setTimeout(() => n.classList.remove('show'), 4000);
   };
 
+  /* ── HELPER: obtener array seguro de getAppointments ─────── */
+  async function _safeGetAppts() {
+    try {
+      const r = await BladeDB.getAppointments();
+      return Array.isArray(r) ? r.filter(Boolean) : [];
+    } catch { return []; }
+  }
+
   /* ══════════════════════════════════════════════════════════
-     RENDER — PÁGINA PÚBLICA (síncrono — no usa Supabase)
+     RENDER — SECCIONES PÚBLICAS
      ══════════════════════════════════════════════════════════ */
   function renderServices() {
     const grid = document.getElementById('servicesGrid');
@@ -177,17 +186,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ══════════════════════════════════════════════════════════
-     BOOKING — carga el cache de Supabase al iniciar
+     BOOKING
      ══════════════════════════════════════════════════════════ */
   let _selectedDuracion = 30;
   let _selectedBarberId = 'auto';
 
-  // Cargar citas y disponibilidad al iniciar para que el motor de slots tenga cache fresco
-  await Promise.all([
-    BladeDB.getAppointments(),
-    BladeDB.getBlocks(),
-    BladeDB.getBarberDays(),
-  ]);
+  // Cargar cache de Supabase al iniciar
+  try {
+    await Promise.all([
+      BladeDB.getAppointments(),
+      BladeDB.getBlocks(),
+      BladeDB.getBarberDays(),
+    ]);
+  } catch(e) { console.warn('[init] Error cargando cache:', e); }
 
   function renderBookingServices() {
     const sel = document.getElementById('bookService');
@@ -209,33 +220,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     const sel    = document.getElementById('bookTime');
     const dateEl = document.getElementById('bookDate');
     if (!sel || !dateEl) return;
-
     const fecha   = dateEl.value;
     const today   = BladeDB.todayISO();
     const soloHoy = fecha === today;
-    let slots     = [];
-
+    let slots = [];
     if (_selectedBarberId === 'auto') {
-      const barbers  = BladeDB.getBarbers().filter(b => b.status !== 'inactivo');
       const slotsSet = new Set();
-      barbers.forEach(b => {
+      BladeDB.getBarbers().filter(b => b.status !== 'inactivo').forEach(b => {
         BladeDB.obtenerDisponibilidadPorBarbero(b.id, fecha, _selectedDuracion, soloHoy)
                .forEach(s => slotsSet.add(s));
       });
       slots = [...slotsSet].sort((a, b) => BladeDB.labelToMins(a) - BladeDB.labelToMins(b));
     } else {
-      const bid = parseInt(_selectedBarberId);
-      slots = BladeDB.obtenerDisponibilidadPorBarbero(bid, fecha, _selectedDuracion, soloHoy);
+      slots = BladeDB.obtenerDisponibilidadPorBarbero(parseInt(_selectedBarberId), fecha, _selectedDuracion, soloHoy);
     }
-
     sel.innerHTML = slots.length
       ? `<option value="">Seleccionar hora...</option>` + slots.map(s => `<option value="${s}">${s}</option>`).join('')
       : `<option value="">⚠ Sin horarios disponibles — prueba otra fecha o barbero</option>`;
   }
 
   document.getElementById('bookService')?.addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    _selectedDuracion = parseInt(opt.dataset.dur) || 30;
+    _selectedDuracion = parseInt(this.options[this.selectedIndex].dataset.dur) || 30;
     renderTimeSlots();
   });
 
@@ -246,44 +251,58 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const bookDateEl = document.getElementById('bookDate');
   if (bookDateEl) {
-    const today = BladeDB.todayISO();
-    bookDateEl.min   = today;
-    bookDateEl.value = today;
+    bookDateEl.min   = BladeDB.todayISO();
+    bookDateEl.value = BladeDB.todayISO();
     bookDateEl.addEventListener('change', renderTimeSlots);
     renderTimeSlots();
   }
 
-  /* ── SUBMIT BOOKING FORM — async ─────────────────────────── */
+  /* ── SUBMIT BOOKING ──────────────────────────────────────── */
   const bookForm = document.getElementById('bookingForm');
   if (bookForm) {
     bookForm.addEventListener('submit', async e => {
       e.preventDefault();
 
-      const clienteName = document.getElementById('bookName').value.trim();
-      const telefono    = document.getElementById('bookPhone').value.trim().replace(/\s/g, '');
-      const servicioId  = parseInt(document.getElementById('bookService').value);
-      const fecha       = document.getElementById('bookDate').value;
-      const hora        = document.getElementById('bookTime').value;
+      const clienteName = document.getElementById('bookName')?.value.trim() || '';
+      const telefono    = document.getElementById('bookPhone')?.value.trim().replace(/\s/g,'') || '';
+      const servicioId  = parseInt(document.getElementById('bookService')?.value || '0');
+      const fecha       = document.getElementById('bookDate')?.value || '';
+      const hora        = document.getElementById('bookTime')?.value || '';
 
       if (!clienteName || !telefono || !servicioId || !fecha || !hora) {
         showNotif('Campos incompletos', 'Por favor completa todos los campos obligatorios.');
         return;
       }
 
+      const submitBtn = bookForm.querySelector('[type="submit"]');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Procesando...'; }
+
+      // Refrescar cache antes de calcular disponibilidad
+      try {
+        await Promise.all([
+          BladeDB.getAppointments(),
+          BladeDB.getBlocks(),
+          BladeDB.getBarberDays(),
+        ]);
+      } catch(e) { console.warn('[submit] Error refrescando cache:', e); }
+
       let barberId = _selectedBarberId === 'auto'
         ? BladeDB.asignacionAutomatica(fecha, _selectedDuracion)
         : parseInt(_selectedBarberId);
 
       if (!barberId) {
-        showNotif('Sin disponibilidad', 'No hay barberos disponibles para ese día y servicio.');
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Solicitar Cita'; }
+        showNotif('Sin disponibilidad', 'No hay barberos disponibles para ese día y servicio. Prueba otra fecha.');
         return;
       }
 
-      // Deshabilitar botón mientras se procesa
-      const submitBtn = bookForm.querySelector('[type="submit"]');
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Procesando...'; }
-
-      const result = await BladeDB.crearCita({ clienteName, telefono, servicioId, barberId, fecha, hora, origen: 'online' });
+      let result;
+      try {
+        result = await BladeDB.crearCita({ clienteName, telefono, servicioId, barberId, fecha, hora, origen: 'online' });
+      } catch(e) {
+        console.error('[submit] crearCita error:', e);
+        result = { ok: false, razon: 'Error inesperado al crear la cita.' };
+      }
 
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Solicitar Cita'; }
 
@@ -292,11 +311,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      const offlineMsg = result.offline ? ' (guardada offline — se sincronizará cuando haya conexión)' : '';
-      showNotif(
-        '¡Cita Solicitada!',
-        `${result.cita.servicio} con ${result.cita.barberName} el ${fecha} a las ${hora}. Pendiente de confirmación.${offlineMsg}`
-      );
+      const offlineMsg = result.offline ? ' (sin conexión — se sincronizará automáticamente)' : '';
+      showNotif('¡Cita Solicitada! ✓', `${result.cita.servicio} con ${result.cita.barberName} el ${fecha} a las ${hora}. Pendiente de confirmación.${offlineMsg}`);
 
       bookForm.reset();
       if (bookDateEl) bookDateEl.value = BladeDB.todayISO();
@@ -306,19 +322,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       renderBookingServices();
       renderTimeSlots();
 
-      // Mostrar panel del cliente automáticamente
-      document.getElementById('clientePhone').value = telefono;
-      await renderClientPanel(telefono);
-      document.getElementById('clientPanel')?.scrollIntoView({ behavior: 'smooth' });
+      // Mostrar historial automáticamente
+      const clientPhoneEl = document.getElementById('clientePhone');
+      if (clientPhoneEl) {
+        clientPhoneEl.value = telefono;
+        await renderClientPanel(telefono);
+        document.getElementById('clientPanel')?.scrollIntoView({ behavior: 'smooth' });
+      }
     });
   }
 
   /* ══════════════════════════════════════════════════════════
-     PANEL CLIENTE — historial por teléfono
+     PANEL CLIENTE
      ══════════════════════════════════════════════════════════ */
   window.buscarCitasCliente = async () => {
-    const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g, '');
-    if (!tel) return;
+    const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g,'');
+    if (!tel) { showNotif('Campo vacío', 'Ingresa tu número de teléfono.'); return; }
     await renderClientPanel(tel);
   };
 
@@ -328,14 +347,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     wrap.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:24px 0;text-align:center;">Buscando citas...</div>`;
 
-    // Traer desde Supabase (refresca cache)
-    const allAppts = await BladeDB.getAppointments();
+    const allAppts = await _safeGetAppts();
     const appts    = allAppts
-      .filter(a => a.telefono === telefono)
-      .sort((a, b) => new Date(b.creadaEn) - new Date(a.creadaEn));
+      .filter(a => a && a.telefono === telefono)
+      .sort((a, b) => new Date(b.creadaEn||0) - new Date(a.creadaEn||0));
 
     if (!appts.length) {
-      wrap.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:24px 0;">No se encontraron citas para este número.</div>`;
+      wrap.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:24px 0;text-align:center;">No se encontraron citas para este número.</div>`;
       return;
     }
 
@@ -345,19 +363,19 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div>
             <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:6px;">${a.servicio||'—'}</div>
             <div style="font-size:12px;color:var(--muted);line-height:2;">
-              <span>👤 ${a.barberName}</span> &nbsp;·&nbsp;
-              <span>📅 ${a.fecha}</span> &nbsp;·&nbsp;
-              <span>🕐 ${a.hora}</span> &nbsp;·&nbsp;
+              <span>👤 ${a.barberName||'—'}</span> &nbsp;·&nbsp;
+              <span>📅 ${a.fecha||'—'}</span> &nbsp;·&nbsp;
+              <span>🕐 ${a.hora||'—'}</span> &nbsp;·&nbsp;
               <span>⏱ ${a.duracion||30} min</span>
             </div>
             <div style="font-size:12px;color:var(--muted);margin-top:4px;">Precio: <strong style="color:var(--gold);">${BladeDB.fmtFull(a.precio||0)}</strong></div>
-            ${a.pending_sync ? '<div style="font-size:10px;color:var(--orange);margin-top:4px;">⚠ Pendiente de sincronización</div>' : ''}
+            ${a.pending_sync ? '<div style="font-size:10px;color:#f59e0b;margin-top:4px;">⚠ Pendiente de sincronización</div>' : ''}
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;">
             ${BladeDB.estadoBadge(a.estado)}
             ${BladeDB.origenBadge(a.origen)}
             ${(a.estado !== 'cancelled' && a.estado !== 'cancelada')
-              ? `<button onclick="cancelarMiCita('${a.id}')" style="background:transparent;border:1px solid rgba(239,68,68,.3);color:#f87171;padding:5px 12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:none;font-family:'DM Sans',sans-serif;transition:all .3s;" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='rgba(239,68,68,.3)'">Cancelar</button>`
+              ? `<button onclick="cancelarMiCita('${a.id}')" style="background:transparent;border:1px solid rgba(239,68,68,.3);color:#f87171;padding:5px 12px;font-size:9px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .3s;" onmouseover="this.style.borderColor='#ef4444'" onmouseout="this.style.borderColor='rgba(239,68,68,.3)'">Cancelar</button>`
               : ''}
           </div>
         </div>
@@ -366,25 +384,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   window.cancelarMiCita = async (id) => {
     if (!confirm('¿Confirmas la cancelación de esta cita?')) return;
-    const result = await BladeDB.cancelarCita(id);
-    if (!result.ok) { showNotif('Error', result.razon); return; }
-    const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g, '');
+    let result;
+    try { result = await BladeDB.cancelarCita(id); }
+    catch(e) { showNotif('Error', 'No se pudo cancelar. Intenta de nuevo.'); return; }
+    if (!result || !result.ok) { showNotif('Error', result?.razon || 'No se pudo cancelar.'); return; }
+    const tel = document.getElementById('clientePhone')?.value.trim().replace(/\s/g,'');
     if (tel) await renderClientPanel(tel);
     renderTimeSlots();
-    showNotif('Cita Cancelada', 'Tu cita fue cancelada. El slot ya está disponible.');
+    showNotif('Cita Cancelada ✓', 'Tu cita fue cancelada. El slot ya está disponible.');
   };
 
-  /* ── CROSS-TAB: recarga cuando admin cambia datos ─────────── */
+  /* ── CROSS-TAB sync ──────────────────────────────────────── */
   window.addEventListener('storage', async () => {
-    renderServices();
-    renderTeam();
-    renderProducts();
-    renderContact();
-    renderBookingBarbers();
-    renderBookingServices();
-    // Refrescar cache de disponibilidad también
-    await BladeDB.getAppointments();
-    await BladeDB.getBlocks();
+    renderServices(); renderTeam(); renderProducts(); renderContact();
+    renderBookingBarbers(); renderBookingServices();
+    try { await Promise.all([BladeDB.getAppointments(), BladeDB.getBlocks()]); }
+    catch(e) {}
     renderTimeSlots();
   });
 

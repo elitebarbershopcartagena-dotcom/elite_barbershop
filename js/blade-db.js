@@ -365,17 +365,17 @@ const BladeDB = (() => {
      § 9  BARBER DAYS
      ══════════════════════════════════════════════════════════════ */
   async function getBarberDays() {
-    if (!_online()) return _ls.get('cache_barber_days', []);
+    if (!_online()) return (_ls.get('cache_barber_days', []) || []).filter(Boolean);
     try {
       const { data, error } = await _sb
         .from('barber_days').select('*').order('fecha', { ascending: true });
       if (error) throw error;
-      const mapped = (data || []).map(_dayFromDB);
+      const mapped = (data || []).map(_dayFromDB).filter(Boolean);
       _ls.set('cache_barber_days', mapped);
       return mapped;
     } catch (err) {
       console.error('[getBarberDays]', err);
-      return _ls.get('cache_barber_days', []);
+      return (_ls.get('cache_barber_days', []) || []).filter(Boolean);
     }
   }
 
@@ -410,15 +410,15 @@ const BladeDB = (() => {
      § 10  BLOCKS
      ══════════════════════════════════════════════════════════════ */
   async function getBlocks(barberId = null, fecha = null) {
-    if (!_online()) return _ls.get('cache_blocks', []);
+    if (!_online()) return (_ls.get('cache_blocks', []) || []).filter(Boolean);
     try {
       let q = _sb.from('blocks').select('*').order('created_at', { ascending: false });
       if (barberId) q = q.eq('barber_id', String(barberId));
       if (fecha)    q = q.eq('fecha', fecha);
       const { data, error } = await q;
       if (error) throw error;
-      const mapped = (data || []).map(_blockFromDB);
-      let cache = _ls.get('cache_blocks', []);
+      const mapped = (data || []).map(_blockFromDB).filter(Boolean);
+      let cache = (_ls.get('cache_blocks', []) || []).filter(Boolean);
       mapped.forEach(b => {
         const idx = cache.findIndex(c => c.id === b.id);
         if (idx > -1) cache[idx] = b; else cache.push(b);
@@ -427,7 +427,7 @@ const BladeDB = (() => {
       return mapped;
     } catch (err) {
       console.error('[getBlocks]', err);
-      return _ls.get('cache_blocks', []);
+      return (_ls.get('cache_blocks', []) || []).filter(Boolean);
     }
   }
 
